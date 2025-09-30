@@ -1,0 +1,335 @@
+.translations-cards {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e1e5e9;
+}
+
+.cards-header {
+  padding: 20px 25px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e1e5e9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cards-header h3 {
+  margin: 0;
+  color: #495057;
+  font-weight: 600;
+}
+
+.cards-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.export-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+  padding: 25px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.translation-card {
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+}
+
+.translation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  padding: 15px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-key {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.key-icon {
+  font-size: 1.2em;
+}
+
+.key-text {
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.delete-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+
+.delete-btn:hover {
+  background: #dc3545;
+}
+
+.card-progress {
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.progress-bar {
+  background: #e9ecef;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #28a745, #20c997);
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 0.85em;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.card-translations {
+  padding: 20px;
+}
+
+.translation-item {
+  margin-bottom: 20px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.translation-item:last-child {
+  margin-bottom: 0;
+}
+
+.translation-item.empty {
+  border-color: #ffc107;
+  background: #fff8e1;
+}
+
+.translation-item:hover {
+  border-color: #007bff;
+}
+
+.language-header {
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e1e5e9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+}
+
+.translation-item.empty .language-header {
+  background: #fff3cd;
+}
+
+.lang-flag {
+  font-size: 1.1em;
+}
+
+.lang-name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.lang-code {
+  background: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.translation-item.empty .lang-code {
+  background: #ffc107;
+  color: #212529;
+}
+
+.translation-content {
+  padding: 15px;
+}
+
+.empty-translation {
+  text-align: center;
+  padding: 10px;
+}
+
+.empty-text {
+  display: block;
+  color: #856404;
+  font-style: italic;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+}
+
+.auto-translate-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.auto-translate-btn {
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.auto-translate-btn:hover {
+  background: #e0a800;
+  transform: scale(1.05);
+}
+
+.translation-value {
+  width: 100%;
+}
+
+.value-input {
+  width: 100%;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 0.9em;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color 0.2s;
+}
+
+.value-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.card-footer {
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #e1e5e9;
+}
+
+.card-meta {
+  color: #6c757d;
+  font-size: 0.8em;
+  line-height: 1.4;
+}
+
+.empty-translations {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.empty-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+}
+
+.empty-translations h3 {
+  margin: 0 0 10px 0;
+  color: #495057;
+}
+
+.empty-translations p {
+  margin: 0;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+    padding: 15px;
+    gap: 15px;
+  }
+
+  .translation-card {
+    margin: 0;
+  }
+
+  .card-header {
+    padding: 12px 15px;
+  }
+
+  .card-translations {
+    padding: 15px;
+  }
+
+  .translation-item {
+    margin-bottom: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .language-header {
+    padding: 8px 12px;
+    font-size: 0.85em;
+  }
+
+  .translation-content {
+    padding: 12px;
+  }
+}

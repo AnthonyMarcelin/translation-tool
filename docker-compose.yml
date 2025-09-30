@@ -1,0 +1,27 @@
+services:
+  front:
+    build: ./front
+    ports:
+      - "3000:80"
+    depends_on:
+      - back
+    restart: unless-stopped
+
+  back:
+    build: ./back
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    volumes:
+      - back_data:/app/data
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./libretranslate_data:/data
+    restart: unless-stopped
+
+volumes:
+  back_data:
