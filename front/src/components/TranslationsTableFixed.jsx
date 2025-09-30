@@ -170,28 +170,31 @@ const TranslationsTable = () => {
     const currentProject = filteredTranslations[0]?.project;
     if (!currentProject) return;
 
-    try {
-      const response = await fetch(
-        `http://localhost:3001/export/project/${currentProject}?langs=${selectedLanguages.join(
-          ",",
-        )}`,
-      );
-      const data = await response.json();
+    console.log("🚀 Export ZIP pour projet:", currentProject);
 
-      // Télécharger les fichiers
-      Object.entries(data).forEach(([lang, translations]) => {
-        const blob = new Blob([JSON.stringify(translations, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${lang}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
+    try {
+      // Utiliser le nouveau endpoint ZIP
+      const url = `http://localhost:3001/export/project/${currentProject}/zip`;
+      console.log("📡 Appel à:", url);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de l'export");
+      }
+
+      // Télécharger le fichier ZIP
+      const blob = await response.blob();
+      console.log("📦 Blob reçu, taille:", blob.size, "bytes");
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `${currentProject}-translations.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error("Export error:", error);
     }
@@ -285,7 +288,7 @@ const TranslationsTable = () => {
                           {isEmpty ? (
                             <div className="empty-state">
                               <span className="empty-text">
-                                Cliquer pour traduire
+                                Cliquer pour saisir manuellement
                               </span>
                               <div className="auto-translate-options">
                                 {selectedLanguages
@@ -306,9 +309,10 @@ const TranslationsTable = () => {
                                           langCode,
                                         );
                                       }}
-                                      title={`Traduire depuis ${sourceLang.toUpperCase()}`}
+                                      title={`Traduire depuis ${sourceLang.toUpperCase()} vers ${langCode.toUpperCase()}`}
                                     >
-                                      {getLanguageInfo(sourceLang)?.flag} → ✨
+                                      {getLanguageInfo(sourceLang)?.flag} →{" "}
+                                      {getLanguageInfo(langCode)?.flag}
                                     </button>
                                   ))}
                               </div>

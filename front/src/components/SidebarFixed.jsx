@@ -1,4 +1,6 @@
+import React from "react";
 import { useApp } from "../context/AppContext";
+import "./ProjectActions.css";
 import "./Sidebar.css";
 
 const Sidebar = () => {
@@ -15,6 +17,52 @@ const Sidebar = () => {
       const newProjects = [...projects, name.trim()];
       dispatch({ type: actions.SET_PROJECTS, payload: newProjects });
       dispatch({ type: actions.SET_CURRENT_PROJECT, payload: name.trim() });
+    }
+  };
+
+  const handleRenameProject = async (project, e) => {
+    e.stopPropagation();
+    const newName = prompt(`Renommer le projet "${project}" :`);
+    if (newName && newName.trim() && newName.trim() !== project) {
+      try {
+        const response = await fetch(
+          `http://localhost:3001/projects/${encodeURIComponent(project)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ newName: newName.trim() }),
+          },
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          alert(error.error || "Erreur lors du renommage");
+          return;
+        }
+
+        const result = await response.json();
+
+        // Mettre à jour la liste des projets
+        const newProjects = projects.map((p) =>
+          p === project ? newName.trim() : p,
+        );
+        dispatch({ type: actions.SET_PROJECTS, payload: newProjects });
+
+        // Si c'est le projet actuel, le mettre à jour aussi
+        if (currentProject === project) {
+          dispatch({
+            type: actions.SET_CURRENT_PROJECT,
+            payload: newName.trim(),
+          });
+        }
+
+        alert(
+          `Projet renommé avec succès ! ${result.updatedTranslations} traduction(s) mises à jour.`,
+        );
+      } catch (error) {
+        console.error("Error renaming project:", error);
+        alert("Erreur lors du renommage du projet");
+      }
     }
   };
 
@@ -88,13 +136,22 @@ const Sidebar = () => {
                   onClick={() => handleProjectSelect(project)}
                 >
                   <span className="project-name">📁 {project}</span>
-                  <button
-                    className="btn-icon delete-btn"
-                    onClick={(e) => handleDeleteProject(project, e)}
-                    title="Supprimer"
-                  >
-                    🗑️
-                  </button>
+                  <div className="project-actions">
+                    <button
+                      className="btn-icon rename-btn"
+                      onClick={(e) => handleRenameProject(project, e)}
+                      title="Renommer"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="btn-icon delete-btn"
+                      onClick={(e) => handleDeleteProject(project, e)}
+                      title="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               ))
             )}

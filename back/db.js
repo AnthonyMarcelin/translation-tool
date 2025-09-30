@@ -1,8 +1,8 @@
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3");
 const path = require("path");
 
 const dbPath = path.join(__dirname, "data", "translations.db");
-const db = new sqlite3.Database(dbPath);
+const db = new Database(dbPath);
 
 // Création des tables si elles n'existent pas
 const initDb = () => {

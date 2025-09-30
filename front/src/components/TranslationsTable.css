@@ -221,20 +221,24 @@
 }
 
 .auto-translate-btn {
-  background: #ffc107;
-  color: #212529;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   border: none;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.75em;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.8em;
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 500;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .auto-translate-btn:hover {
-  background: #e0a800;
-  transform: scale(1.05);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
 }
 
 .value-display {

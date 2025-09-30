@@ -1,9 +1,10 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const archiver = require("archiver");
 const app = express();
 const port = 3001;
-const db = require("./db");
+const db = require("./db-better");
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -83,6 +84,59 @@ app.get("/projects", (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       const projects = rows.map((row) => row.project);
       res.json(projects);
+    },
+  );
+});
+
+// Renommer un projet
+app.put("/projects/:oldName", (req, res) => {
+  const { oldName } = req.params;
+  const { newName } = req.body;
+
+  if (!newName || newName.trim() === "") {
+    return res
+      .status(400)
+      .json({ error: "Le nouveau nom de projet est requis" });
+  }
+
+  if (oldName === newName) {
+    return res
+      .status(400)
+      .json({ error: "Le nouveau nom doit être différent" });
+  }
+
+  // Vérifier que le nouveau nom n'existe pas déjà
+  db.get(
+    "SELECT COUNT(*) as count FROM translations WHERE project = ?",
+    [newName.trim()],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      if (row.count > 0) {
+        return res
+          .status(400)
+          .json({ error: "Un projet avec ce nom existe déjà" });
+      }
+
+      // Renommer le projet dans toutes les traductions
+      db.run(
+        "UPDATE translations SET project = ?, updated_at = CURRENT_TIMESTAMP WHERE project = ?",
+        [newName.trim(), oldName],
+        function (err) {
+          if (err) return res.status(500).json({ error: err.message });
+
+          if (this.changes === 0) {
+            return res.status(404).json({ error: "Projet non trouvé" });
+          }
+
+          res.json({
+            message: "Projet renommé avec succès",
+            oldName,
+            newName: newName.trim(),
+            updatedTranslations: this.changes,
+          });
+        },
+      );
     },
   );
 });
@@ -251,6 +305,61 @@ app.get("/export/project/:project", (req, res) => {
     });
 
     res.json(result);
+  });
+});
+
+// Export ZIP d'un projet (toutes langues en fichiers séparés)
+app.get("/export/project/:project/zip", (req, res) => {
+  const { project } = req.params;
+
+  const query = `
+    SELECT t.key, v.lang, v.text
+    FROM translations t
+    JOIN translation_values v ON v.translation_id = t.id
+    WHERE t.project = ?
+    ORDER BY t.key, v.lang
+  `;
+
+  db.all(query, [project], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    // Organiser par langue
+    const langData = {};
+    rows.forEach((row) => {
+      if (!langData[row.lang]) {
+        langData[row.lang] = {};
+      }
+      langData[row.lang][row.key] = row.text;
+    });
+
+    // Créer le ZIP
+    const archive = archiver("zip", {
+      zlib: { level: 9 },
+    });
+
+    // Configuration des headers pour le téléchargement
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${project}-translations.zip"`,
+    );
+
+    // Pipe le ZIP vers la réponse
+    archive.pipe(res);
+
+    // Ajouter chaque langue comme fichier JSON
+    Object.keys(langData).forEach((lang) => {
+      const jsonContent = JSON.stringify(langData[lang], null, 2);
+      archive.append(jsonContent, { name: `${lang}.json` });
+    });
+
+    // Finaliser le ZIP
+    archive.finalize();
+
+    archive.on("error", (err) => {
+      console.error("Erreur lors de la création du ZIP:", err);
+      res.status(500).json({ error: "Erreur lors de la création du ZIP" });
+    });
   });
 });
 
