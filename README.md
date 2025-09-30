@@ -1,6 +1,6 @@
 # Translation Tool
 
-Outil de gestion et d’automatisation des traductions pour projets web, inspiré de Tolgee.
+Outil de gestion et d’automatisation des traductions pour projets web.
 
 ## Fonctionnalités
 
