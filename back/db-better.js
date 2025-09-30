@@ -64,8 +64,6 @@ const dbWrapper = {
 
 // Création des tables si elles n'existent pas
 const initDb = () => {
-  dbWrapper.run("DROP TABLE IF EXISTS translation_values");
-  dbWrapper.run("DROP TABLE IF EXISTS translations");
   dbWrapper.run(`CREATE TABLE IF NOT EXISTS translations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     key TEXT NOT NULL,
