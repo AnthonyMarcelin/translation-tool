@@ -172,7 +172,7 @@ const TranslationsTable = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/export/${currentProject}?langs=${selectedLanguages.join(
+        `http://localhost:3001/export/project/${currentProject}?langs=${selectedLanguages.join(
           ",",
         )}`,
       );

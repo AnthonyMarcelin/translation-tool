@@ -214,6 +214,46 @@ app.get("/export/:lang", (req, res) => {
   });
 });
 
+// Export complet d'un projet (toutes langues)
+app.get("/export/project/:project", (req, res) => {
+  const { project } = req.params;
+  const { langs } = req.query;
+
+  // Si des langues spécifiques sont demandées
+  const languesToExport = langs ? langs.split(",") : null;
+
+  let query = `
+    SELECT t.key, v.lang, v.text
+    FROM translations t
+    JOIN translation_values v ON v.translation_id = t.id
+    WHERE t.project = ?
+  `;
+  let params = [project];
+
+  if (languesToExport) {
+    const placeholders = languesToExport.map(() => "?").join(",");
+    query += ` AND v.lang IN (${placeholders})`;
+    params.push(...languesToExport);
+  }
+
+  query += " ORDER BY t.key, v.lang";
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    // Organiser par langue
+    const result = {};
+    rows.forEach((row) => {
+      if (!result[row.lang]) {
+        result[row.lang] = {};
+      }
+      result[row.lang][row.key] = row.text;
+    });
+
+    res.json(result);
+  });
+});
+
 // Suppression d'un projet et de toutes ses clés/valeurs
 app.delete("/projects/:project", (req, res) => {
   const { project } = req.params;

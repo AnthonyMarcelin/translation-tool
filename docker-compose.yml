@@ -33,9 +33,12 @@ services:
 volumes:
   translation_db:
     driver: local
-  
+    name: translation-tool_db # Nom fixe pour éviter les conflits
+
   libretranslate_models:
     driver: local
-      
+    name: translation-tool_models
+
   libretranslate_cache:
     driver: local
+    name: translation-tool_cache
