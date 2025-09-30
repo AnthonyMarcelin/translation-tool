@@ -1,7 +1,7 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Installation des dépendances système nécessaires pour sqlite3
+# Installation of build tools for sqlite3
 RUN apk add --no-cache make gcc g++ python3
 
 COPY package*.json ./
