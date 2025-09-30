@@ -13,15 +13,29 @@ services:
       - "3001:3001"
     restart: unless-stopped
     volumes:
-      - back_data:/app/data
+      - translation_db:/app/data
+    environment:
+      - NODE_ENV=production
 
   libretranslate:
     image: libretranslate/libretranslate:latest
     ports:
       - "5001:5000"
     volumes:
-      - ./libretranslate_data:/data
+      - libretranslate_models:/data
+      - libretranslate_cache:/app/cache
     restart: unless-stopped
+    environment:
+      - LT_LOAD_ONLY=en,fr,es,de,it,nl,pt,ja
+      - LT_UPDATE_MODELS=true
 
+# Volumes persistants Docker (surviveront aux rebuilds)
 volumes:
-  back_data:
+  translation_db:
+    driver: local
+  
+  libretranslate_models:
+    driver: local
+      
+  libretranslate_cache:
+    driver: local
