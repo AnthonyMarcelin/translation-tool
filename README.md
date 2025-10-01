@@ -1,6 +1,41 @@
-# Translation Tool
+# Translation ## Installation
 
-Outil de gestion et d’automatisation des traductions pour projets web.
+### Prérequis
+
+- Docker et Docker Compose
+
+### Développement local (branche `main`)
+
+```sh
+git clone https://github.com/AnthonyMarcelin/translation-tool.git
+cd translation-tool
+git checkout main
+docker compose up -d --build
+```
+
+L'application sera disponible sur [http://localhost:3000](http://localhost:3000)
+
+### Déploiement en production (branche `server`)
+
+Pour un déploiement avec Traefik et nom de domaine :
+
+```sh
+git clone https://github.com/AnthonyMarcelin/translation-tool.git
+cd translation-tool
+git checkout server
+docker compose up -d --build
+```
+
+**Prérequis pour la production :**
+- Traefik configuré avec le réseau `traefik_public`
+- Certificats SSL Let's Encrypt
+- Nom de domaine configuré (ex: `translation.votre-domaine.com`)
+
+La branche `server` contient les configurations spécifiques :
+- Routes API via `/api` au lieu de `localhost:3001`
+- Labels Traefik pour reverse proxy
+- Certificats SSL automatiques
+- CORS configuré pour le domaine de productiongestion et d’automatisation des traductions pour projets web.
 
 ## Fonctionnalités
 
@@ -34,11 +69,25 @@ L’application sera disponible sur [http://localhost:3000](http://localhost:300
 - Ajoutez/éditez les traductions manuellement ou via auto-traduction
 - Exportez vos fichiers pour i18next ou autres outils
 
+## Structure du projet
+
+### Branches
+
+- **`main`** : Développement local avec accès direct aux ports (localhost:3000, localhost:3001)
+- **`server`** : Production avec Traefik, certificats SSL et nom de domaine
+
+### Workflow recommandé
+
+1. Développement sur la branche `main`
+2. Merge des nouvelles fonctionnalités vers `server` pour déploiement
+3. Adaptations spécifiques production uniquement sur `server`
+
 ## Technologies
 
 - Frontend : React + Vite
 - Backend : Express.js + SQLite
 - Traduction : LibreTranslate (API locale Docker)
+- Production : Traefik reverse proxy
 
 ## Licence
 
