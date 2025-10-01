@@ -1,43 +1,76 @@
 services:
   front:
     build: ./front
-    ports:
-      - "3000:80"
-    depends_on:
-      - back
-    restart: unless-stopped
+    container_name: translation-front
+    restart: always
+    networks:
+      - traefik_public
+      - internal
+    labels:
+      - "traefik.enable=true"
+
+      # LAN access
+      - "traefik.http.routers.translation-local.rule=Host(`translation.server.local`)"
+      - "traefik.http.routers.translation-local.entrypoints=websecure"
+      - "traefik.http.routers.translation-local.tls=true"
+      - "traefik.http.routers.translation-local.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.translation-local.middlewares=auth@file"
+      - "traefik.http.routers.translation-local.service=translation-front-service"
+      - "traefik.http.services.translation-front-service.loadbalancer.server.port=80"
+
+      # External access DuckDNS
+      - "traefik.http.routers.translation-duckdns.rule=Host(`translation.drannoc.duckdns.org`)"
+      - "traefik.http.routers.translation-duckdns.entrypoints=websecure"
+      - "traefik.http.routers.translation-duckdns.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.translation-duckdns.service=translation-front-service"
 
   back:
     build: ./back
-    ports:
-      - "3001:3001"
-    restart: unless-stopped
+    container_name: translation-back
+    restart: always
+    networks:
+      - traefik_public
+      - internal
     volumes:
       - translation_db:/app/data
     environment:
       - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.translation-back.rule=Host(`translation.drannoc.duckdns.org`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.translation-back.entrypoints=websecure"
+      - "traefik.http.routers.translation-back.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.translation-back.service=translation-back-service"
+      - "traefik.http.services.translation-back-service.loadbalancer.server.port=3001"
+      - "traefik.http.routers.translation-back.middlewares=translation-back-strip"
+      - "traefik.http.middlewares.translation-back-strip.stripprefix.prefixes=/api"
 
   libretranslate:
     image: libretranslate/libretranslate:latest
-    ports:
-      - "5001:5000"
+    container_name: libretranslate
+    restart: always
+    networks:
+      - internal
     volumes:
       - libretranslate_models:/data
       - libretranslate_cache:/app/cache
-    restart: unless-stopped
     environment:
       - LT_LOAD_ONLY=en,fr,es,de,it,nl,pt,ja
       - LT_UPDATE_MODELS=true
 
-# Persistants data volumes
 volumes:
   translation_db:
-    driver: local
-    name: translation-tool_db # Fixed name to avoid conflicts
-
+    name: translation-tool_db
   libretranslate_models:
-    driver: local
     name: translation-tool_models
+  libretranslate_cache:
+    name: translation-tool_cache
+
+networks:
+  traefik_public:
+    external: true
+  internal:
+    driver: bridge
 
   libretranslate_cache:
     driver: local
