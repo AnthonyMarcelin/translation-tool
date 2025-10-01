@@ -60,18 +60,15 @@ services:
 
 volumes:
   translation_db:
-    name: translation-tool_db
+    name: translation-tool-database
   libretranslate_models:
-    name: translation-tool_models
+    name: translation-tool-lt-models
   libretranslate_cache:
-    name: translation-tool_cache
+    name: translation-tool-lt-cache
 
 networks:
   traefik_public:
     external: true
   internal:
+    name: translation-tool-network
     driver: bridge
-
-  libretranslate_cache:
-    driver: local
-    name: translation-tool_cache
