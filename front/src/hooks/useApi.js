@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 
-const API = 'http://localhost:3001';
-
 export const useApi = () => {
   const { dispatch, actions, projects } = useApp(); { useApp } from "../context/AppContext";
 
-const API = "http://localhost:3001";
+const API = process.env.REACT_APP_API_URL || "http://localhost:3001";
 
 export const useApi = () => {
   const { dispatch, actions, projects } = useApp();
