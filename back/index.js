@@ -7,7 +7,10 @@ const port = 3001;
 const db = require("./db-better");
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://translation.drannoc.duckdns.org",
+    ],
   }),
 );
 app.use(express.json());
