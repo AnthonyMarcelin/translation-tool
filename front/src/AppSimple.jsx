@@ -20,7 +20,7 @@ const SimpleApp = memo(() => {
 
     dispatch({ type: actions.SET_LOADING, payload: true });
     try {
-      const response = await fetch("http://localhost:3001/translations");
+      const response = await fetch("/api/translations");
       const data = await response.json();
       const uniqueProjects = [...new Set(data.map((t) => t.project))].filter(
         Boolean,
@@ -39,7 +39,7 @@ const SimpleApp = memo(() => {
     dispatch({ type: actions.SET_LOADING, payload: true });
     try {
       const response = await fetch(
-        `http://localhost:3001/translations?project=${project}`,
+        `/api/translations?project=${project}`,
       );
       const translations = await response.json();
 

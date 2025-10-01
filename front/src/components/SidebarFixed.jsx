@@ -3,6 +3,8 @@ import { useApp } from "../context/AppContext";
 import "./ProjectActions.css";
 import "./Sidebar.css";
 
+const API = "/api";
+
 const Sidebar = () => {
   const { projects, currentProject, sidebarOpen, dispatch, actions } = useApp();
 
@@ -26,7 +28,7 @@ const Sidebar = () => {
     if (newName && newName.trim() && newName.trim() !== project) {
       try {
         const response = await fetch(
-          `http://localhost:3001/projects/${encodeURIComponent(project)}`,
+          `${API}/projects/${encodeURIComponent(project)}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -74,7 +76,7 @@ const Sidebar = () => {
       )
     ) {
       try {
-        await fetch(`http://localhost:3001/projects/${project}`, {
+        await fetch(`${API}/projects/${project}`, {
           method: "DELETE",
         });
         const newProjects = projects.filter((p) => p !== project);

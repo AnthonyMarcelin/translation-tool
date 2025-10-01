@@ -4,6 +4,8 @@ import { useFilters } from "../hooks/useFilters";
 import { LANGUAGES } from "../constants";
 import "./TranslationsTable.css";
 
+const API = "/api";
+
 const TranslationsTable = () => {
   const { selectedLanguages, dispatch, actions } = useApp();
   const { filteredTranslations } = useFilters();
@@ -23,14 +25,14 @@ const TranslationsTable = () => {
     try {
       // Trouver l'ID de la valeur existante ou créer une nouvelle
       const valuesResponse = await fetch(
-        `http://localhost:3001/translations/${translationId}/values`,
+        `${API}/translations/${translationId}/values`,
       );
       const existingValues = await valuesResponse.json();
       const existingValue = existingValues.find((v) => v.lang === lang);
 
       if (existingValue) {
         // Mettre à jour
-        await fetch(`http://localhost:3001/values/${existingValue.id}`, {
+        await fetch(`${API}/values/${existingValue.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: editValue }),
@@ -38,7 +40,7 @@ const TranslationsTable = () => {
       } else {
         // Créer nouveau
         await fetch(
-          `http://localhost:3001/translations/${translationId}/values`,
+          `${API}/translations/${translationId}/values`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -93,7 +95,7 @@ const TranslationsTable = () => {
     });
 
     try {
-      const response = await fetch("http://localhost:3001/translate", {
+      const response = await fetch("${API}/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -126,7 +128,7 @@ const TranslationsTable = () => {
         // Aussi enregistrer en base de données
         try {
           const saveResponse = await fetch(
-            `http://localhost:3001/translations/${translationId}/values`,
+            `${API}/translations/${translationId}/values`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -153,7 +155,7 @@ const TranslationsTable = () => {
     if (!window.confirm("Supprimer cette traduction ?")) return;
 
     try {
-      await fetch(`http://localhost:3001/translations/${translationId}`, {
+      await fetch(`${API}/translations/${translationId}`, {
         method: "DELETE",
       });
       dispatch({ type: actions.REMOVE_TRANSLATION, payload: translationId });
@@ -174,7 +176,7 @@ const TranslationsTable = () => {
 
     try {
       // Utiliser le nouveau endpoint ZIP
-      const url = `http://localhost:3001/export/project/${currentProject}/zip`;
+      const url = `${API}/export/project/${currentProject}/zip`;
       console.log("📡 Appel à:", url);
 
       const response = await fetch(url);

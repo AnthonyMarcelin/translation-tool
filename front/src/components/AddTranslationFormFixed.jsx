@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useApp } from "../context/AppContext";
 import "./AddTranslationForm.css";
 
+const API = "/api";
+
 const AddTranslationForm = () => {
   const { currentProject, selectedLanguages, dispatch, actions } = useApp();
   const [newKey, setNewKey] = useState("");
@@ -15,7 +17,7 @@ const AddTranslationForm = () => {
     setIsLoading(true);
     try {
       // 1. Créer la clé
-      const keyResponse = await fetch("http://localhost:3001/translations", {
+      const keyResponse = await fetch(`${API}/translations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: newKey.trim(), project: currentProject }),
@@ -25,7 +27,7 @@ const AddTranslationForm = () => {
 
       // 2. Ajouter la valeur française
       await fetch(
-        `http://localhost:3001/translations/${translationId}/values`,
+        `${API}/translations/${translationId}/values`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -40,7 +42,7 @@ const AddTranslationForm = () => {
       for (const targetLang of otherLanguages) {
         try {
           const translateResponse = await fetch(
-            "http://localhost:3001/translate",
+            `${API}/translate`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },

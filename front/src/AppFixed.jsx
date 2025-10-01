@@ -14,7 +14,7 @@ const AppContent = () => {
   // API functions directement dans le composant pour éviter les boucles
   const fetchProjects = async () => {
     try {
-      const response = await fetch("http://localhost:3001/translations");
+      const response = await fetch("/api/translations");
       const data = await response.json();
       const uniqueProjects = [...new Set(data.map((t) => t.project))].filter(
         Boolean,
@@ -31,7 +31,7 @@ const AppContent = () => {
     dispatch({ type: actions.SET_LOADING, payload: true });
     try {
       const response = await fetch(
-        `http://localhost:3001/translations?project=${project}`,
+        `/api/translations?project=${project}`,
       );
       const translations = await response.json();
 
@@ -40,7 +40,7 @@ const AppContent = () => {
         translations.map(async (translation) => {
           try {
             const valuesResponse = await fetch(
-              `http://localhost:3001/translations/${translation.id}/values`,
+              `/api/translations/${translation.id}/values`,
             );
             const values = await valuesResponse.json();
 

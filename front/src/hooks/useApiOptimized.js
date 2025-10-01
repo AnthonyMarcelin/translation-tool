@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 
-const API = "/api";
+const API = window.location.hostname === "localhost" ? "/api" : "/api";
 
 export const useApi = () => {
   const { dispatch, actions, projects } = useApp();
