@@ -21,9 +21,10 @@ export const useProjectApi = () => {
 
   const createProject = useCallback(
     async (projectName) => {
+      const safeProjects = Array.isArray(projects) ? projects : [];
       dispatch({
         type: actions.SET_PROJECTS,
-        payload: [...projects, projectName],
+        payload: [...safeProjects, projectName],
       });
       dispatch({ type: actions.SET_CURRENT_PROJECT, payload: projectName });
     },
@@ -36,7 +37,9 @@ export const useProjectApi = () => {
         await ProjectService.deleteProject(projectName);
         dispatch({
           type: actions.SET_PROJECTS,
-          payload: projects.filter((p) => p !== projectName),
+          payload: Array.isArray(projects)
+            ? projects.filter((p) => p !== projectName)
+            : [],
         });
         dispatch({ type: actions.SET_CURRENT_PROJECT, payload: '' });
         dispatch({ type: actions.SET_TRANSLATIONS, payload: [] });

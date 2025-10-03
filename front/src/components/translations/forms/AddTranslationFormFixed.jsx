@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { useApp } from "../context/AppContext";
-import { useApi } from "../hooks/useApiOptimized";
+import { useApp } from "../../../context/AppContext";
 import "./AddTranslationForm.css";
 
 const AddTranslationForm = () => {
-  const { currentProject, selectedLanguages } = useApp();
-  const api = useApi();
+  const { currentProject, selectedLanguages, dispatch, actions } = useApp();
   const [newKey, setNewKey] = useState("");
   const [frenchValue, setFrenchValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -16,12 +14,65 @@ const AddTranslationForm = () => {
 
     setIsLoading(true);
     try {
-      await api.createTranslation(
-        newKey.trim(),
-        frenchValue.trim(),
-        currentProject,
-        selectedLanguages,
+      // 1. Créer la clé
+      const keyResponse = await fetch("http://localhost:3001/translations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: newKey.trim(), project: currentProject }),
+      });
+      const keyData = await keyResponse.json();
+      const translationId = keyData.id;
+
+      // 2. Ajouter la valeur française
+      await fetch(
+        `http://localhost:3001/translations/${translationId}/values`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lang: "fr", text: frenchValue.trim() }),
+        },
       );
+
+      // 3. Traduction automatique pour les autres langues
+      const otherLanguages = selectedLanguages.filter((lang) => lang !== "fr");
+      const values = { fr: frenchValue.trim() };
+
+      for (const targetLang of otherLanguages) {
+        try {
+          const translateResponse = await fetch(
+            "http://localhost:3001/translate",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text: frenchValue.trim(),
+                source: "fr",
+                target: targetLang,
+                translation_id: translationId,
+              }),
+            },
+          );
+          const translateResult = await translateResponse.json();
+          values[targetLang] = translateResult.translatedText || "";
+        } catch (error) {
+          console.error(`Translation error for ${targetLang}:`, error);
+          values[targetLang] = "";
+        }
+      }
+
+      // 4. Ajouter à l'état local
+      const newTranslation = {
+        id: translationId,
+        key: newKey.trim(),
+        project: currentProject,
+        values,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      dispatch({ type: actions.ADD_TRANSLATION, payload: newTranslation });
+
+      // Reset form
       setNewKey("");
       setFrenchValue("");
     } catch (error) {

@@ -1,27 +1,34 @@
-import { useApp } from "../context/AppContext";
-import { LANGUAGES } from "../constants";
+import { useApp } from '../context/AppContext';
+import { LANGUAGES } from '../constants';
 
 export const useFilters = () => {
-  const { translations, selectedLanguages, searchTerm, filter, sort } =
-    useApp();
+  const {
+    translations: rawTranslations,
+    selectedLanguages: rawSelectedLanguages,
+    searchTerm,
+    filter,
+    sort,
+  } = useApp();
+
+  const translations = Array.isArray(rawTranslations) ? rawTranslations : [];
+  const selectedLanguages = Array.isArray(rawSelectedLanguages)
+    ? rawSelectedLanguages
+    : ['fr', 'en'];
 
   const filteredTranslations = translations.filter((translation) => {
-    // Filtre par terme de recherche
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      const matchesKey = translation.key.toLowerCase().includes(searchLower);
+      const matchesKey = translation.key?.toLowerCase().includes(searchLower);
       const matchesValue = Object.values(translation.values || {}).some(
-        (value) => value.toLowerCase().includes(searchLower),
+        (value) => value?.toLowerCase().includes(searchLower),
       );
       if (!matchesKey && !matchesValue) return false;
     }
 
     // Filtre par statut
-    if (filter === "missing") {
-      // Au moins une traduction manquante
+    if (filter === 'missing') {
       return selectedLanguages.some((lang) => !translation.values?.[lang]);
-    } else if (filter === "completed") {
-      // Toutes les traductions présentes
+    } else if (filter === 'completed') {
       return selectedLanguages.every((lang) => translation.values?.[lang]);
     }
 
@@ -30,11 +37,11 @@ export const useFilters = () => {
 
   const sortedTranslations = [...filteredTranslations].sort((a, b) => {
     switch (sort) {
-      case "key":
-        return a.key.localeCompare(b.key);
-      case "created":
+      case 'key':
+        return a.key?.localeCompare(b.key) || 0;
+      case 'created':
         return new Date(b.created_at) - new Date(a.created_at);
-      case "updated":
+      case 'updated':
         return new Date(b.updated_at) - new Date(a.updated_at);
       default:
         return 0;

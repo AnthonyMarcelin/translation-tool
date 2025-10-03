@@ -2,95 +2,39 @@ import { useEffect, useState } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import SidebarFixed from "./components/layout/SidebarFixed";
 import Header from "./components/layout/Header";
-import AddTranslationFormFixed from "./components/AddTranslationFormFixed";
-import TranslationsTable from "./components/TranslationsTableFixed";
-import TranslationsCards from "./components/TranslationsCards";
+import AddTranslationFormFixed from "./components/translations/forms/AddTranslationFormFixed";
+import TranslationsTable from "./components/translations/TranslationsTableFixed";
+import TranslationsCards from "./components/translations/TranslationsCards";
+import { useTranslationApi } from "./hooks/useTranslationApi";
+import { useProjectApi } from "./hooks/useProjectApi";
 import "./App.css";
 
 const AppContent = () => {
-  const { currentProject, sidebarOpen, viewMode, dispatch, actions } = useApp();
+  const { currentProject, sidebarOpen, viewMode, actions } = useApp();
+  const translationApi = useTranslationApi();
+  const projectApi = useProjectApi();
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // API functions directement dans le composant pour éviter les boucles
-  const fetchProjects = async () => {
-    try {
-      const response = await fetch("http://localhost:3001/translations");
-      const data = await response.json();
-      const uniqueProjects = [...new Set(data.map((t) => t.project))].filter(
-        Boolean,
-      );
-      dispatch({ type: actions.SET_PROJECTS, payload: uniqueProjects });
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-    }
-  };
-
-  const fetchTranslations = async (project) => {
-    if (!project) return;
-
-    dispatch({ type: actions.SET_LOADING, payload: true });
-    try {
-      const response = await fetch(
-        `http://localhost:3001/translations?project=${project}`,
-      );
-      const translations = await response.json();
-
-      // Charger les valeurs pour chaque traduction
-      const translationsWithValues = await Promise.all(
-        translations.map(async (translation) => {
-          try {
-            const valuesResponse = await fetch(
-              `http://localhost:3001/translations/${translation.id}/values`,
-            );
-            const values = await valuesResponse.json();
-
-            const valuesByLang = {};
-            values.forEach((val) => {
-              valuesByLang[val.lang] = val.text;
-            });
-
-            return {
-              ...translation,
-              values: valuesByLang,
-            };
-          } catch (error) {
-            console.error(
-              `Error loading values for translation ${translation.id}:`,
-              error,
-            );
-            return {
-              ...translation,
-              values: {},
-            };
-          }
-        }),
-      );
-
-      dispatch({
-        type: actions.SET_TRANSLATIONS,
-        payload: translationsWithValues,
-      });
-    } catch (error) {
-      console.error("Error fetching translations:", error);
-    } finally {
-      dispatch({ type: actions.SET_LOADING, payload: false });
-    }
-  };
-
-  // Initialisation une seule fois
+  // Initialisation : charger projets
   useEffect(() => {
     if (!isInitialized) {
-      fetchProjects();
+      projectApi.fetchProjects()
+        .then((projects) => actions.setProjects(projects))
+        .catch(console.error);
       setIsInitialized(true);
     }
-  }, [isInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isInitialized, projectApi, actions]);
 
-  // Charger les traductions quand le projet change
+  // Charger traductions à chaque changement de projet
   useEffect(() => {
-    if (currentProject && isInitialized) {
-      fetchTranslations(currentProject);
-    }
-  }, [currentProject, isInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!currentProject) return;
+
+    actions.setLoading(true);
+    translationApi.fetchTranslations(currentProject)
+      .then((translations) => actions.setTranslations(translations))
+      .catch(console.error)
+      .finally(() => actions.setLoading(false));
+  }, [currentProject, translationApi, actions]);
 
   return (
     <div className={`app ${sidebarOpen ? "sidebar-open" : ""}`}>

@@ -3,10 +3,12 @@ import ACTIONS from '../constants/actions';
 const appReducer = (state, action) => {
   switch (action.type) {
     case ACTIONS.SET_PROJECTS:
-      return { ...state, projects: action.payload };
+      return {
+        ...state,
+        projects: Array.isArray(action.payload) ? action.payload : [],
+      };
 
     case ACTIONS.SET_CURRENT_PROJECT:
-      // Persister le projet sélectionné
       localStorage.setItem('currentProject', action.payload);
       return { ...state, currentProject: action.payload };
 
@@ -14,7 +16,6 @@ const appReducer = (state, action) => {
       return { ...state, translations: action.payload };
 
     case ACTIONS.SET_SELECTED_LANGUAGES:
-      // Persister les langues sélectionnées
       localStorage.setItem('selectedLanguages', JSON.stringify(action.payload));
       return { ...state, selectedLanguages: action.payload };
 

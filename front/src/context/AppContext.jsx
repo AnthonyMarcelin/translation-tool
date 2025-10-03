@@ -3,17 +3,18 @@ import appReducer from './app.reducer';
 import { actionCreators } from '../utils/actions.helper';
 
 const initialState = {
-  projects: [],
-  currentProject: localStorage.getItem('currentProject') || '',
+  projects: JSON.parse(localStorage.getItem("projects") || "[]"),
+  currentProject: localStorage.getItem("currentProject") || "",
   translations: [],
-  selectedLanguages: JSON.parse(localStorage.getItem('selectedLanguages') || '["fr","en"]'),
-  searchTerm: '',
+  selectedLanguages: JSON.parse(localStorage.getItem("selectedLanguages") || '["fr","en"]'),
+  searchTerm: "",
   loading: false,
-  filter: 'all',
-  sort: 'key',
+  filter: "all",
+  sort: "key",
   sidebarOpen: window.innerWidth > 768,
-  viewMode: localStorage.getItem('viewMode') || 'table',
+  viewMode: localStorage.getItem("viewMode") || "table",
 };
+
 
 const AppContext = createContext();
 

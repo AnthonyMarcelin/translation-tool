@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { useApp } from "../context/AppContext";
-import { useFilters } from "../hooks/useFilters";
-import { LANGUAGES } from "../constants";
+import { useApp } from "../../context/AppContext";
+import { useFilters } from "../../hooks/useFilters";
+import { LANGUAGES } from "../../constants";
 import "./TranslationsTable.css";
 
 const TranslationsTable = () => {
-  const { selectedLanguages, dispatch, actions } = useApp();
+  const { selectedLanguages, actions } = useApp();
   const { filteredTranslations } = useFilters();
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
 
   const startEdit = (translationId, lang) => {
     const translation = filteredTranslations.find(
-      (t) => t.id === translationId,
+      (t) => t.id === translationId
     );
     const currentValue = translation?.values?.[lang] || "";
     setEditingCell(`${translationId}-${lang}`);
@@ -21,37 +21,31 @@ const TranslationsTable = () => {
 
   const saveEdit = async (translationId, lang) => {
     try {
-      // Trouver l'ID de la valeur existante ou créer une nouvelle
+      // Vérifier si la valeur existe déjà
       const valuesResponse = await fetch(
-        `http://localhost:3001/translations/${translationId}/values`,
+        `http://localhost:3001/translations/${translationId}/values`
       );
       const existingValues = await valuesResponse.json();
       const existingValue = existingValues.find((v) => v.lang === lang);
 
       if (existingValue) {
-        // Mettre à jour
         await fetch(`http://localhost:3001/values/${existingValue.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: editValue }),
         });
       } else {
-        // Créer nouveau
         await fetch(
           `http://localhost:3001/translations/${translationId}/values`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ lang, text: editValue }),
-          },
+          }
         );
       }
 
-      // Mettre à jour l'état local
-      dispatch({
-        type: actions.UPDATE_TRANSLATION_VALUE,
-        payload: { translationId, lang, value: editValue },
-      });
+      actions.updateTranslationValue(translationId, lang, editValue);
     } catch (error) {
       console.error("Error updating translation value:", error);
     }
@@ -76,21 +70,10 @@ const TranslationsTable = () => {
 
   const handleAutoTranslate = async (translationId, fromLang, toLang) => {
     const translation = filteredTranslations.find(
-      (t) => t.id === translationId,
+      (t) => t.id === translationId
     );
     const sourceText = translation?.values?.[fromLang];
-
-    if (!sourceText) {
-      alert(`Aucun texte source en ${fromLang.toUpperCase()}`);
-      return;
-    }
-
-    console.log("🚀 Auto-translation:", {
-      translationId,
-      fromLang,
-      toLang,
-      sourceText,
-    });
+    if (!sourceText) return alert(`Aucun texte source en ${fromLang.toUpperCase()}`);
 
     try {
       const response = await fetch("http://localhost:3001/translate", {
@@ -100,51 +83,27 @@ const TranslationsTable = () => {
           text: sourceText,
           source: fromLang,
           target: toLang,
-          // Ne pas passer translation_id pour éviter l'enregistrement automatique
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const result = await response.json();
-      console.log("✅ Translation result:", result);
 
       if (result.translatedText) {
-        // Mettre à jour l'état local
-        dispatch({
-          type: actions.UPDATE_TRANSLATION_VALUE,
-          payload: {
-            translationId,
-            lang: toLang,
-            value: result.translatedText,
-          },
-        });
-        console.log("✅ State updated");
+        actions.updateTranslationValue(translationId, toLang, result.translatedText);
 
-        // Aussi enregistrer en base de données
-        try {
-          const saveResponse = await fetch(
-            `http://localhost:3001/translations/${translationId}/values`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                lang: toLang,
-                text: result.translatedText,
-              }),
-            },
-          );
-          if (!saveResponse.ok) {
-            console.warn("Failed to save to database:", saveResponse.status);
+        await fetch(
+          `http://localhost:3001/translations/${translationId}/values`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lang: toLang, text: result.translatedText }),
           }
-        } catch (saveError) {
-          console.warn("Save to DB failed:", saveError);
-        }
+        );
       }
     } catch (error) {
-      console.error("❌ Auto-translation error:", error);
+      console.error("Auto-translation error:", error);
       alert(`Erreur de traduction: ${error.message}`);
     }
   };
@@ -156,37 +115,24 @@ const TranslationsTable = () => {
       await fetch(`http://localhost:3001/translations/${translationId}`, {
         method: "DELETE",
       });
-      dispatch({ type: actions.REMOVE_TRANSLATION, payload: translationId });
+      actions.removeTranslation(translationId);
     } catch (error) {
       console.error("Error deleting translation:", error);
     }
   };
 
-  const getLanguageInfo = (langCode) => {
-    return LANGUAGES.find((lang) => lang.code === langCode);
-  };
+  const getLanguageInfo = (langCode) => LANGUAGES.find((lang) => lang.code === langCode);
 
   const exportTranslations = async () => {
     const currentProject = filteredTranslations[0]?.project;
     if (!currentProject) return;
 
-    console.log("🚀 Export ZIP pour projet:", currentProject);
-
     try {
-      // Utiliser le nouveau endpoint ZIP
       const url = `http://localhost:3001/export/project/${currentProject}/zip`;
-      console.log("📡 Appel à:", url);
-
       const response = await fetch(url);
+      if (!response.ok) throw new Error("Erreur lors de l'export");
 
-      if (!response.ok) {
-        throw new Error("Erreur lors de l'export");
-      }
-
-      // Télécharger le fichier ZIP
       const blob = await response.blob();
-      console.log("📦 Blob reçu, taille:", blob.size, "bytes");
-
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -210,6 +156,7 @@ const TranslationsTable = () => {
     );
   }
 
+  
   return (
     <div className="translations-table-container">
       <div className="table-header">
@@ -233,9 +180,7 @@ const TranslationsTable = () => {
                     <div className="lang-header">
                       <span className="lang-flag">{lang?.flag}</span>
                       <span className="lang-name">{lang?.name}</span>
-                      <span className="lang-code">
-                        {langCode.toUpperCase()}
-                      </span>
+                      <span className="lang-code">{langCode.toUpperCase()}</span>
                     </div>
                   </th>
                 );
@@ -262,18 +207,13 @@ const TranslationsTable = () => {
                   const isEmpty = !value.trim();
 
                   return (
-                    <td
-                      key={langCode}
-                      className={`translation-cell ${isEmpty ? "empty" : ""}`}
-                    >
+                    <td key={langCode} className={`translation-cell ${isEmpty ? "empty" : ""}`}>
                       {isEditing ? (
                         <div className="edit-mode">
                           <textarea
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={(e) =>
-                              handleKeyDown(e, translation.id, langCode)
-                            }
+                            onKeyDown={(e) => handleKeyDown(e, translation.id, langCode)}
                             onBlur={() => saveEdit(translation.id, langCode)}
                             className="edit-input"
                             rows="2"
@@ -281,38 +221,24 @@ const TranslationsTable = () => {
                           />
                         </div>
                       ) : (
-                        <div
-                          className="cell-content"
-                          onClick={() => startEdit(translation.id, langCode)}
-                        >
+                        <div className="cell-content" onClick={() => startEdit(translation.id, langCode)}>
                           {isEmpty ? (
                             <div className="empty-state">
-                              <span className="empty-text">
-                                Cliquer pour saisir manuellement
-                              </span>
+                              <span className="empty-text">Cliquer pour saisir manuellement</span>
                               <div className="auto-translate-options">
                                 {selectedLanguages
-                                  .filter(
-                                    (lang) =>
-                                      lang !== langCode &&
-                                      translation.values?.[lang],
-                                  )
+                                  .filter((lang) => lang !== langCode && translation.values?.[lang])
                                   .map((sourceLang) => (
                                     <button
                                       key={sourceLang}
                                       className="auto-translate-btn"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleAutoTranslate(
-                                          translation.id,
-                                          sourceLang,
-                                          langCode,
-                                        );
+                                        handleAutoTranslate(translation.id, sourceLang, langCode);
                                       }}
                                       title={`Traduire depuis ${sourceLang.toUpperCase()} vers ${langCode.toUpperCase()}`}
                                     >
-                                      {getLanguageInfo(sourceLang)?.flag} →{" "}
-                                      {getLanguageInfo(langCode)?.flag}
+                                      {getLanguageInfo(sourceLang)?.flag} → {getLanguageInfo(langCode)?.flag}
                                     </button>
                                   ))}
                               </div>
@@ -321,9 +247,7 @@ const TranslationsTable = () => {
                             <div className="value-display">
                               <span className="value-text">{value}</span>
                               <div className="cell-actions">
-                                <button className="edit-btn" title="Éditer">
-                                  ✏️
-                                </button>
+                                <button className="edit-btn" title="Éditer">✏️</button>
                               </div>
                             </div>
                           )}
