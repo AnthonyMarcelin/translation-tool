@@ -1,6 +1,6 @@
 import React from "react";
-import { useApp } from "../context/AppContext";
-import "./ProjectActions.css";
+import { useApp } from "../../context/AppContext";
+import "../ProjectActions.css";
 import "./Sidebar.css";
 
 const Sidebar = () => {

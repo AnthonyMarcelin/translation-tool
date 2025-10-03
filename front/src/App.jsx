@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
-import SidebarFixed from "./components/SidebarFixed";
-import Header from "./components/Header";
+import SidebarFixed from "./components/layout/SidebarFixed";
+import Header from "./components/layout/Header";
 import AddTranslationFormFixed from "./components/AddTranslationFormFixed";
 import TranslationsTable from "./components/TranslationsTableFixed";
 import TranslationsCards from "./components/TranslationsCards";

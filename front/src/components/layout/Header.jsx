@@ -1,11 +1,11 @@
-import { useApp } from "../context/AppContext";
-import { useFilters } from "../hooks/useFilters";
+import { useApp } from "../../context/AppContext";
+import { useFilters } from "../../hooks/useFilters";
 import {
   LANGUAGES,
   FILTER_OPTIONS,
   SORT_OPTIONS,
   VIEW_MODES,
-} from "../constants";
+} from "../../constants";
 import "./Header.css";
 
 const Header = () => {
@@ -17,7 +17,6 @@ const Header = () => {
     sort,
     viewMode,
     sidebarOpen,
-    dispatch,
     actions,
   } = useApp();
 
@@ -31,7 +30,7 @@ const Header = () => {
     // Garder au moins une langue
     if (newLanguages.length === 0) return;
 
-    dispatch({ type: actions.SET_SELECTED_LANGUAGES, payload: newLanguages });
+    actions.setSelectedLanguages(newLanguages);
   };
 
   if (!currentProject) {
@@ -40,7 +39,7 @@ const Header = () => {
         <div className="container">
           <button
             className="sidebar-toggle-btn"
-            onClick={() => dispatch({ type: actions.TOGGLE_SIDEBAR })}
+            onClick={actions.toggleSidebar}
           >
             {sidebarOpen ? "✕" : "☰"}
           </button>
@@ -53,12 +52,11 @@ const Header = () => {
   return (
     <div className="header">
       <div className="container">
-        {/* Ligne 1: Navigation et titre */}
         <div className="header-top">
           <div className="header-left">
             <button
               className="sidebar-toggle-btn"
-              onClick={() => dispatch({ type: actions.TOGGLE_SIDEBAR })}
+              onClick={actions.toggleSidebar}
             >
               {sidebarOpen ? "✕" : "☰"}
             </button>
@@ -75,31 +73,24 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Ligne 2: Contrôles */}
+
         <div className="header-controls">
-          {/* Recherche */}
+
           <div className="search-box">
             <input
               type="text"
               placeholder="🔍 Rechercher des clés ou traductions..."
               value={searchTerm}
-              onChange={(e) =>
-                dispatch({
-                  type: actions.SET_SEARCH_TERM,
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => actions.setSearchTerm(e.target.value)}
               className="search-input"
             />
           </div>
 
-          {/* Filtres */}
+
           <div className="filter-controls">
             <select
               value={filter}
-              onChange={(e) =>
-                dispatch({ type: actions.SET_FILTER, payload: e.target.value })
-              }
+              onChange={(e) => actions.setFilter(e.target.value)}
               className="filter-select"
             >
               {FILTER_OPTIONS.map((option) => (
@@ -111,9 +102,7 @@ const Header = () => {
 
             <select
               value={sort}
-              onChange={(e) =>
-                dispatch({ type: actions.SET_SORT, payload: e.target.value })
-              }
+              onChange={(e) => actions.setSort(e.target.value)}
               className="filter-select"
             >
               {SORT_OPTIONS.map((option) => (
@@ -130,12 +119,7 @@ const Header = () => {
                   className={`view-btn ${
                     viewMode === mode.value ? "active" : ""
                   }`}
-                  onClick={() =>
-                    dispatch({
-                      type: actions.SET_VIEW_MODE,
-                      payload: mode.value,
-                    })
-                  }
+                  onClick={() => actions.setViewMode(mode.value)}
                   title={mode.label}
                 >
                   {mode.icon}
@@ -145,7 +129,6 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Ligne 3: Sélection des langues */}
         <div className="language-selector">
           <span className="language-label">Langues :</span>
           <div className="language-chips">
