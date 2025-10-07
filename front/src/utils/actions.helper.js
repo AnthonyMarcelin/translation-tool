@@ -1,6 +1,6 @@
 import ACTIONS from '../constants/actions';
 
-export const actionCreators = {
+const actionCreators = {
   setProjects: (projects) => ({
     type: ACTIONS.SET_PROJECTS,
     payload: projects,
@@ -30,6 +30,10 @@ export const actionCreators = {
     type: ACTIONS.ADD_TRANSLATION,
     payload: translation,
   }),
+  updateTranslation: (translation) => ({
+    type: ACTIONS.UPDATE_TRANSLATION,
+    payload: translation,
+  }),
   removeTranslation: (translationId) => ({
     type: ACTIONS.REMOVE_TRANSLATION,
     payload: translationId,
@@ -38,4 +42,21 @@ export const actionCreators = {
   setSort: (sort) => ({ type: ACTIONS.SET_SORT, payload: sort }),
   toggleSidebar: () => ({ type: ACTIONS.TOGGLE_SIDEBAR }),
   setViewMode: (mode) => ({ type: ACTIONS.SET_VIEW_MODE, payload: mode }),
+  addProject: (project) => ({
+    type: ACTIONS.ADD_PROJECT,
+    payload: project,
+  }),
+  updateProject: (project) => ({
+    type: ACTIONS.UPDATE_PROJECT,
+    payload: project,
+  }),
+  deleteProject: (projectId) => ({
+    type: ACTIONS.DELETE_PROJECT,
+    payload: projectId,
+  }),
+  toggleDarkMode: () => ({
+    type: ACTIONS.TOGGLE_DARK_MODE,
+  }),
 };
+
+export default actionCreators;

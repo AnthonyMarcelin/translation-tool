@@ -1,6 +1,5 @@
-import { useApp } from '../context/AppContext';
 import { LANGUAGES } from '../constants';
-
+import { useApp } from '../context/AppContext';
 export const useFilters = () => {
   const {
     translations: rawTranslations,
@@ -25,7 +24,6 @@ export const useFilters = () => {
       if (!matchesKey && !matchesValue) return false;
     }
 
-    // Filtre par statut
     if (filter === 'missing') {
       return selectedLanguages.some((lang) => !translation.values?.[lang]);
     } else if (filter === 'completed') {

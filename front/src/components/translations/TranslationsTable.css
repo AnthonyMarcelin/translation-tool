@@ -127,24 +127,102 @@
   border-right: 2px solid #e1e5e9;
 }
 
-.key-content {
+.key-text {
+  flex: 1;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.9em;
+}
+
+.key-text:hover {
+  background: rgba(0, 123, 255, 0.05);
+  border: 1px solid #007bff;
+}
+
+.edit-key-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.6;
+  font-size: 0.9em;
+}
+
+.key-actions {
   display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 
-.key-text {
-  font-weight: 600;
-  color: #495057;
+.delete-key-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  width:5px;
+  height:5px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.6;
+  font-size: 0.9em;
+  color: #dc3545;
+}
+
+.delete-key-btn:hover {
+  background: rgba(220, 53, 69, 0.1);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.editing-cell {
+  padding: 8px;
+  background: white;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.editing-cell input {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  font-size: 0.9em;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  background: transparent;
+  outline: none;
 }
 
-.key-meta {
-  opacity: 0.7;
+.editing-cell input:focus {
+  outline: none;
 }
 
-.key-meta small {
+.editing-cell .edit-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.editing-cell .edit-actions button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 0.8em;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.editing-cell .edit-actions button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.editing-cell .edit-actions button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
 }
 
 .progress-cell {
@@ -176,12 +254,30 @@
   font-weight: 500;
 }
 
-.translation-cell {
+.translation-content {
+  min-height: 40px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  padding: 4px;
   position: relative;
 }
 
-.translation-cell.empty {
-  background: #fff8f0;
+.translation-content:hover {
+  background: rgba(0, 123, 255, 0.05);
+  border: 1px solid #007bff;
+}
+
+.translation-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.translation-content:hover .translation-actions {
+  opacity: 1;
 }
 
 .cell-content {
@@ -221,7 +317,7 @@
 }
 
 .auto-translate-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #334155 0%, #475569 100%);
   color: white;
   border: none;
   padding: 6px 12px;
@@ -230,7 +326,7 @@
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 2px 4px rgba(51, 65, 85, 0.2);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -238,7 +334,7 @@
 
 .auto-translate-btn:hover {
   transform: translateY(-1px) scale(1.05);
-  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 8px rgba(51, 65, 85, 0.4);
 }
 
 .value-display {
@@ -361,4 +457,11 @@
   .progress-column {
     display: none;
   }
+}
+
+
+
+.key-content{
+  display:flex;
+  justify-content: space-between;
 }

@@ -6,15 +6,12 @@ export const ENDPOINTS = {
     BASE: `${API_BASE_URL}/translations`,
     BY_ID: (id) => `${API_BASE_URL}/translations/${id}`,
     VALUES: (id) => `${API_BASE_URL}/translations/${id}/values`,
+    TRANSLATE: `${API_BASE_URL}/translate`,
   },
   PROJECTS: {
-    BY_NAME: (name) => `${API_BASE_URL}/projects/${name}`,
+    BASE: `${API_BASE_URL}/projects`,
+    BY_ID: (id) => `${API_BASE_URL}/projects/${id}`,
   },
-  VALUES: {
-    BY_ID: (id) => `${API_BASE_URL}/values/${id}`,
-  },
-  TRANSLATE: `${API_BASE_URL}/translate`,
-  EXPORT: (project) => `${API_BASE_URL}/export/${project}`,
 };
 
 export const DEFAULT_HEADERS = {
@@ -25,6 +22,9 @@ export const handleResponse = async (response) => {
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.message || 'Something went wrong');
+  }
+  if (response.status === 204) {
+    return { success: true };
   }
   return response.json();
 };

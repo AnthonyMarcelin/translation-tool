@@ -22,6 +22,6 @@ export const SORT_OPTIONS = [
 ];
 
 export const VIEW_MODES = [
-  { value: "table", label: "Tableau", icon: "📊" },
-  { value: "cards", label: "Cartes", icon: "🗃️" },
+  { value: "table", label: "Tableau", icon: "table" },
+  { value: "cards", label: "Cartes", icon: "cards" },
 ];

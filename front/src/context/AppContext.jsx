@@ -1,10 +1,10 @@
-import { createContext, useContext, useReducer, useMemo } from 'react';
+import { createContext, useContext, useReducer, useMemo, useCallback } from 'react';
 import appReducer from './app.reducer';
-import { actionCreators } from '../utils/actions.helper';
+import actionCreators from '../utils/actions.helper';
 
 const initialState = {
-  projects: JSON.parse(localStorage.getItem("projects") || "[]"),
-  currentProject: localStorage.getItem("currentProject") || "",
+  projects: [],
+  currentProject: JSON.parse(localStorage.getItem("currentProject") || "null") || null,
   translations: [],
   selectedLanguages: JSON.parse(localStorage.getItem("selectedLanguages") || '["fr","en"]'),
   searchTerm: "",
@@ -13,6 +13,7 @@ const initialState = {
   sort: "key",
   sidebarOpen: window.innerWidth > 768,
   viewMode: localStorage.getItem("viewMode") || "table",
+  darkMode: localStorage.getItem("darkMode") === "true" || false,
 };
 
 
@@ -21,14 +22,25 @@ const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
+  const safeDispatch = useCallback((action) => {
+    if (!action || !action.type) {
+      return;
+    }
+    return dispatch(action);
+  }, []);
+
+
   const actions = useMemo(() => {
     return Object.keys(actionCreators).reduce((acc, key) => {
-      acc[key] = (...args) => dispatch(actionCreators[key](...args));
+      acc[key] = (...args) => safeDispatch(actionCreators[key](...args));
       return acc;
     }, {});
-  }, [dispatch]);
+  }, [safeDispatch]);
 
-  const value = { ...state, dispatch, actions };
+  const value = useMemo(
+    () => ({ ...state, dispatch: safeDispatch, actions }),
+    [state, safeDispatch, actions]
+  );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

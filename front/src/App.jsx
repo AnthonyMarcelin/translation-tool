@@ -5,40 +5,53 @@ import Header from "./components/layout/Header";
 import AddTranslationFormFixed from "./components/translations/forms/AddTranslationFormFixed";
 import TranslationsTable from "./components/translations/TranslationsTableFixed";
 import TranslationsCards from "./components/translations/TranslationsCards";
+import DarkModeToggle from "./components/ui/DarkModeToggle";
 import { useTranslationApi } from "./hooks/useTranslationApi";
 import { useProjectApi } from "./hooks/useProjectApi";
 import "./App.css";
 
 const AppContent = () => {
-  const { currentProject, sidebarOpen, viewMode, actions } = useApp();
+  const { currentProject, sidebarOpen, viewMode, darkMode, actions } = useApp();
   const translationApi = useTranslationApi();
   const projectApi = useProjectApi();
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialisation : charger projets
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
+
   useEffect(() => {
     if (!isInitialized) {
       projectApi.fetchProjects()
-        .then((projects) => actions.setProjects(projects))
+        .then((projects) => {
+          if (currentProject?.id) {
+            const projectExists = projects.some(p => p.id === currentProject.id);
+            if (!projectExists) {
+              console.warn('Current project no longer exists in database, clearing...');
+              actions.setCurrentProject(null);
+            }
+          }
+        })
         .catch(console.error);
       setIsInitialized(true);
     }
-  }, [isInitialized, projectApi, actions]);
+  }, [isInitialized, projectApi, currentProject, actions]);
 
-  // Charger traductions à chaque changement de projet
   useEffect(() => {
-    if (!currentProject) return;
+    if (!currentProject?.id) return;
 
-    actions.setLoading(true);
-    translationApi.fetchTranslations(currentProject)
-      .then((translations) => actions.setTranslations(translations))
-      .catch(console.error)
-      .finally(() => actions.setLoading(false));
-  }, [currentProject, translationApi, actions]);
+    translationApi.fetchTranslations(currentProject.id)
+      .catch(console.error);
+  }, [currentProject, translationApi]);
 
   return (
     <div className={`app ${sidebarOpen ? "sidebar-open" : ""}`}>
       <SidebarFixed />
+      <DarkModeToggle />
 
       <div className="main-content">
         <Header />

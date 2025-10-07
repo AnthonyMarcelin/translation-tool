@@ -1,23 +1,38 @@
-import { ENDPOINTS, handleResponse } from '../config/api.config';
+import {
+  ENDPOINTS,
+  handleResponse,
+  DEFAULT_HEADERS,
+} from '../config/api.config';
 
 export const ProjectService = {
   async fetchProjects() {
-    const response = await fetch(ENDPOINTS.TRANSLATIONS.BASE);
+    const response = await fetch(ENDPOINTS.PROJECTS.BASE);
     const data = await handleResponse(response);
-    return [...new Set(data.map((t) => t.project))].filter(Boolean);
+    return data;
   },
 
-  async deleteProject(projectName) {
-    const response = await fetch(ENDPOINTS.PROJECTS.BY_NAME(projectName), {
-      method: 'DELETE',
+  async createProject(name) {
+    const response = await fetch(ENDPOINTS.PROJECTS.BASE, {
+      method: 'POST',
+      headers: DEFAULT_HEADERS,
+      body: JSON.stringify({ name }),
     });
     return handleResponse(response);
   },
 
-  async exportProject(project, languages) {
-    const response = await fetch(
-      `${ENDPOINTS.EXPORT(project)}?langs=${languages.join(',')}`,
-    );
+  async renameProject(id, newName) {
+    const response = await fetch(`${ENDPOINTS.PROJECTS.BY_ID(id)}`, {
+      method: 'PUT',
+      headers: DEFAULT_HEADERS,
+      body: JSON.stringify({ newName }),
+    });
+    return handleResponse(response);
+  },
+
+  async deleteProject(id) {
+    const response = await fetch(`${ENDPOINTS.PROJECTS.BY_ID(id)}`, {
+      method: 'DELETE',
+    });
     return handleResponse(response);
   },
 };

@@ -6,6 +6,7 @@ import {
   SORT_OPTIONS,
   VIEW_MODES,
 } from "../../constants";
+import { TableIcon, LayersIcon, MagnifyingGlassIcon, HamburgerMenuIcon, Cross2Icon, FileIcon } from "@radix-ui/react-icons";
 import "./Header.css";
 
 const Header = () => {
@@ -27,7 +28,6 @@ const Header = () => {
       ? selectedLanguages.filter((l) => l !== langCode)
       : [...selectedLanguages, langCode];
 
-    // Garder au moins une langue
     if (newLanguages.length === 0) return;
 
     actions.setSelectedLanguages(newLanguages);
@@ -41,14 +41,13 @@ const Header = () => {
             className="sidebar-toggle-btn"
             onClick={actions.toggleSidebar}
           >
-            {sidebarOpen ? "✕" : "☰"}
+            {sidebarOpen ? <Cross2Icon /> : <HamburgerMenuIcon />}
           </button>
           <h1>Sélectionnez un projet pour commencer</h1>
         </div>
       </div>
     );
   }
-
   return (
     <div className="header">
       <div className="container">
@@ -58,9 +57,9 @@ const Header = () => {
               className="sidebar-toggle-btn"
               onClick={actions.toggleSidebar}
             >
-              {sidebarOpen ? "✕" : "☰"}
+              {sidebarOpen ? <Cross2Icon /> : <HamburgerMenuIcon />}
             </button>
-            <h1>📁 {currentProject}</h1>
+            <h1><FileIcon /> {currentProject.name}</h1>
           </div>
 
           <div className="header-right">
@@ -77,9 +76,10 @@ const Header = () => {
         <div className="header-controls">
 
           <div className="search-box">
+            <MagnifyingGlassIcon className="search-icon" />
             <input
               type="text"
-              placeholder="🔍 Rechercher des clés ou traductions..."
+              placeholder="Rechercher des clés ou traductions..."
               value={searchTerm}
               onChange={(e) => actions.setSearchTerm(e.target.value)}
               className="search-input"
@@ -99,6 +99,7 @@ const Header = () => {
                 </option>
               ))}
             </select>
+
 
             <select
               value={sort}
@@ -122,7 +123,7 @@ const Header = () => {
                   onClick={() => actions.setViewMode(mode.value)}
                   title={mode.label}
                 >
-                  {mode.icon}
+                  {mode.value === "table" ? <TableIcon /> : <LayersIcon />}
                 </button>
               ))}
             </div>

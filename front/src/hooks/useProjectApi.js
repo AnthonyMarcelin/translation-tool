@@ -3,82 +3,73 @@ import { useApp } from '../context/AppContext';
 import ProjectService from '../services/project.service';
 
 export const useProjectApi = () => {
-  const { dispatch, actions, projects } = useApp();
+  const { actions } = useApp();
 
   const fetchProjects = useCallback(async () => {
-    dispatch({ type: actions.SET_LOADING, payload: true });
+    actions.setLoading(true);
     try {
-      const uniqueProjects = await ProjectService.fetchProjects();
-      dispatch({ type: actions.SET_PROJECTS, payload: uniqueProjects });
-      return uniqueProjects;
+      const projects = await ProjectService.fetchProjects();
+      actions.setProjects(projects);
+      return projects;
     } catch (error) {
       console.error('Error fetching projects:', error);
-      return [];
+      throw error;
     } finally {
-      dispatch({ type: actions.SET_LOADING, payload: false });
+      actions.setLoading(false);
     }
-  }, [dispatch, actions]);
+  }, [actions]);
 
   const createProject = useCallback(
-    async (projectName) => {
-      const safeProjects = Array.isArray(projects) ? projects : [];
-      dispatch({
-        type: actions.SET_PROJECTS,
-        payload: [...safeProjects, projectName],
-      });
-      dispatch({ type: actions.SET_CURRENT_PROJECT, payload: projectName });
+    async (name) => {
+      try {
+        const project = await ProjectService.createProject(name);
+        actions.addProject(project);
+        actions.setCurrentProject(project);
+        return project;
+      } catch (error) {
+        console.error('Error creating project:', error);
+        throw error;
+      }
     },
-    [dispatch, actions, projects],
+    [actions],
+  );
+
+  const renameProject = useCallback(
+    async (id, newName) => {
+      try {
+        const updatedProject = await ProjectService.renameProject(id, newName);
+        actions.updateProject(updatedProject);
+        return updatedProject;
+      } catch (error) {
+        console.error('Error renaming project:', error);
+        throw error;
+      }
+    },
+    [actions],
   );
 
   const deleteProject = useCallback(
-    async (projectName) => {
+    async (projectId) => {
       try {
-        await ProjectService.deleteProject(projectName);
-        dispatch({
-          type: actions.SET_PROJECTS,
-          payload: Array.isArray(projects)
-            ? projects.filter((p) => p !== projectName)
-            : [],
-        });
-        dispatch({ type: actions.SET_CURRENT_PROJECT, payload: '' });
-        dispatch({ type: actions.SET_TRANSLATIONS, payload: [] });
+        await ProjectService.deleteProject(projectId);
+        actions.deleteProject(projectId);
       } catch (error) {
         console.error('Error deleting project:', error);
+        throw error;
       }
     },
-    [dispatch, actions, projects],
+    [actions],
   );
-
-  const exportTranslations = useCallback(async (project, languages) => {
-    try {
-      const data = await ProjectService.exportProject(project, languages);
-
-      Object.entries(data).forEach(([lang, translations]) => {
-        const blob = new Blob([JSON.stringify(translations, null, 2)], {
-          type: 'application/json',
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${lang}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    } catch (error) {
-      console.error('Export error:', error);
-    }
-  }, []);
 
   return useMemo(
     () => ({
       fetchProjects,
       createProject,
+      renameProject,
       deleteProject,
-      exportTranslations,
     }),
-    [fetchProjects, createProject, deleteProject, exportTranslations],
+    [fetchProjects, createProject, renameProject, deleteProject],
   );
 };
+
+export default useProjectApi;

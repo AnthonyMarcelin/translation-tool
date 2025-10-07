@@ -1,180 +1,218 @@
 import { useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import TranslationService from '../services/translation.service';
+import { ENDPOINTS, DEFAULT_HEADERS } from '../config/api.config';
 
 export const useTranslationApi = () => {
-  const { dispatch, actions } = useApp();
+  const { actions } = useApp();
 
   const fetchTranslations = useCallback(
-    async (project) => {
-      if (!project) return;
+    async (projectId) => {
+      if (!projectId) return;
 
-      dispatch({ type: actions.SET_LOADING, payload: true });
+      actions.setLoading(true);
       try {
         const translations = await TranslationService.fetchTranslations(
-          project,
+          projectId,
         );
-        dispatch({
-          type: actions.SET_TRANSLATIONS,
-          payload: translations,
-        });
+        actions.setTranslations(translations);
+        return translations;
       } catch (error) {
         console.error('Error fetching translations:', error);
+        throw error;
       } finally {
-        dispatch({ type: actions.SET_LOADING, payload: false });
+        actions.setLoading(false);
       }
     },
-    [dispatch, actions],
+    [actions],
   );
 
   const createTranslation = useCallback(
-    async (key, frenchValue, project, selectedLanguages) => {
-      dispatch({ type: actions.SET_LOADING, payload: true });
+    async (key, projectId) => {
+      if (!key || !projectId) {
+        throw new Error('Key and project ID are required');
+      }
+
       try {
-        const keyData = await TranslationService.createTranslation(
+        const translation = await TranslationService.createTranslation(
           key,
-          project,
+          projectId,
         );
-        const translationId = keyData.id;
-
-        await TranslationService.addTranslationValue(
-          translationId,
-          'fr',
-          frenchValue,
-        );
-
-        const otherLanguages = selectedLanguages.filter(
-          (lang) => lang !== 'fr',
-        );
-        const values = { fr: frenchValue };
-
-        const translationPromises = otherLanguages.map(async (targetLang) => {
-          try {
-            const result = await TranslationService.autoTranslate(
-              frenchValue,
-              'fr',
-              targetLang,
-              translationId,
-            );
-            values[targetLang] = result.translatedText || '';
-          } catch (error) {
-            console.error(`Translation error for ${targetLang}:`, error);
-            values[targetLang] = '';
-          }
+        actions.addTranslation({
+          ...translation,
+          values: {},
         });
-
-        await Promise.all(translationPromises);
-
-        const newTranslation = {
-          id: translationId,
-          key,
-          project,
-          values,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        dispatch({ type: actions.ADD_TRANSLATION, payload: newTranslation });
-        return newTranslation;
+        return translation;
       } catch (error) {
         console.error('Error creating translation:', error);
         throw error;
-      } finally {
-        dispatch({ type: actions.SET_LOADING, payload: false });
       }
     },
-    [dispatch, actions],
+    [actions],
   );
 
-  const updateTranslationValue = useCallback(
-    async (translationId, lang, value) => {
+  const addTranslationValue = useCallback(
+    async (translationId, lang, text) => {
       try {
-        clearTimeout(updateTranslationValue.timeout);
-        updateTranslationValue.timeout = setTimeout(async () => {
-          try {
-            const existingValues =
-              await TranslationService.getTranslationValues(translationId);
-            const existingValue = existingValues.find((v) => v.lang === lang);
-
-            if (existingValue) {
-              await TranslationService.updateTranslationValue(
-                existingValue.id,
-                value,
-              );
-            } else {
-              await TranslationService.addTranslationValue(
-                translationId,
-                lang,
-                value,
-              );
-            }
-          } catch (error) {
-            console.error('Error updating translation value:', error);
-          }
-        }, 500);
-
-        dispatch({
-          type: actions.UPDATE_TRANSLATION_VALUE,
-          payload: { translationId, lang, value },
-        });
+        const value = await TranslationService.addTranslationValue(
+          translationId,
+          lang,
+          text,
+        );
+        actions.updateTranslationValue(translationId, lang, text);
+        return value;
       } catch (error) {
-        console.error('Error updating translation value:', error);
+        console.error('Error adding translation value:', error);
+        throw error;
       }
     },
-    [dispatch, actions],
+    [actions],
+  );
+
+  const updateTranslation = useCallback(
+    async (translationId, newKey, projectId) => {
+      try {
+        const updated = await TranslationService.updateTranslation(
+          translationId,
+          newKey,
+          projectId,
+        );
+        actions.updateTranslation(updated);
+        return updated;
+      } catch (error) {
+        console.error('Error updating translation:', error);
+        throw error;
+      }
+    },
+    [actions],
   );
 
   const deleteTranslation = useCallback(
     async (translationId) => {
       try {
         await TranslationService.deleteTranslation(translationId);
-        dispatch({ type: actions.REMOVE_TRANSLATION, payload: translationId });
+        actions.removeTranslation(translationId);
       } catch (error) {
         console.error('Error deleting translation:', error);
+        throw error;
       }
     },
-    [dispatch, actions],
+    [actions],
   );
 
   const autoTranslate = useCallback(
-    async (translationId, fromLang, toLang, text) => {
+    async (text, targetLang, sourceLang = 'fr', translationId = null) => {
       try {
-        const result = await TranslationService.autoTranslate(
+        return await TranslationService.autoTranslate(
           text,
-          fromLang,
-          toLang,
+          targetLang,
+          sourceLang,
           translationId,
         );
-
-        await updateTranslationValue(
-          translationId,
-          toLang,
-          result.translatedText || '',
-        );
-
-        return result.translatedText;
       } catch (error) {
-        console.error('Auto-translation error:', error);
-        return '';
+        console.error('Error during auto-translation:', error);
+        throw error;
       }
     },
-    [updateTranslationValue],
+    [],
+  );
+
+  const updateTranslationValue = useCallback(
+    async (translationId, lang, text, autoTranslate = false) => {
+      try {
+        const result = await TranslationService.updateTranslationValue(
+          translationId,
+          lang,
+          text,
+          autoTranslate,
+        );
+        actions.updateTranslationValue(translationId, lang, text);
+        return result;
+      } catch (error) {
+        console.error('Error updating translation value:', error);
+        throw error;
+      }
+    },
+    [actions],
+  );
+
+  const deleteTranslationValue = useCallback(async (valueId) => {
+    try {
+      await TranslationService.deleteTranslationValue(valueId);
+      actions.removeTranslationValue(valueId);
+    } catch (error) {
+      console.error('Error deleting translation value:', error);
+      throw error;
+    }
+  }, []);
+
+  const exportTranslations = useCallback(
+    async (projectId, selectedLanguages = []) => {
+      try {
+        const languagesParam =
+          selectedLanguages.length > 0 ? selectedLanguages.join(',') : '';
+        const url = languagesParam
+          ? `${ENDPOINTS.TRANSLATIONS.BASE}/export?project_id=${projectId}&languages=${languagesParam}`
+          : `${ENDPOINTS.TRANSLATIONS.BASE}/export?project_id=${projectId}`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: DEFAULT_HEADERS,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: 'application/json',
+        });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `translations_${data.project_name}_${
+          new Date().toISOString().split('T')[0]
+        }.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+
+        return data;
+      } catch (error) {
+        console.error('Error exporting translations:', error);
+        throw error;
+      }
+    },
+    [],
   );
 
   return useMemo(
     () => ({
       fetchTranslations,
       createTranslation,
+      addTranslationValue,
+      updateTranslation,
       updateTranslationValue,
       deleteTranslation,
+      deleteTranslationValue,
       autoTranslate,
+      exportTranslations,
     }),
     [
       fetchTranslations,
       createTranslation,
+      addTranslationValue,
+      updateTranslation,
       updateTranslationValue,
       deleteTranslation,
+      deleteTranslationValue,
       autoTranslate,
+      exportTranslations,
     ],
   );
 };
+
+export default useTranslationApi;

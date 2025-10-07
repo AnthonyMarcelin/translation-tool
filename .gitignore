@@ -32,3 +32,5 @@ Thumbs.db
 
 # LibreTranslate
 libretranslate_data/
+
+pnpm-lock.yaml

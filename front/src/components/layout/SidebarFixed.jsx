@@ -1,87 +1,74 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useApp } from "../../context/AppContext";
+import { useProjectApi } from "../../hooks/useProjectApi";
+import {
+  GlobeIcon,
+  Cross2Icon,
+  PlusIcon,
+  FileIcon,
+  Pencil2Icon,
+  TrashIcon
+} from "@radix-ui/react-icons";
 import "../ProjectActions.css";
 import "./Sidebar.css";
 
 const Sidebar = () => {
   const { projects, currentProject, sidebarOpen, actions } = useApp();
+  const { fetchProjects, createProject, deleteProject, renameProject } = useProjectApi();
+  
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        await fetchProjects();
+      } catch (err) {
+        console.error("Erreur fetch projects:", err);
+      }
+    };
+    loadProjects();
+  }, [fetchProjects]);
 
   const handleProjectSelect = (project) => {
     actions.setCurrentProject(project);
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     const name = prompt("Nom du nouveau projet :");
-    if (name && name.trim()) {
-      const newProjects = [...projects, name.trim()];
-      actions.setProjects(newProjects);
-      actions.setCurrentProject(name.trim());
+    if (!name || !name.trim()) return;
+
+    try {
+      const newProject = await createProject(name.trim());
+      actions.setCurrentProject(newProject);
+    } catch (error) {
+      console.error("Erreur création projet:", error);
+      alert(error.message || "Erreur création projet");
     }
   };
 
   const handleRenameProject = async (project, e) => {
     e.stopPropagation();
-    const newName = prompt(`Renommer le projet "${project}" :`);
-    if (newName && newName.trim() && newName.trim() !== project) {
-      try {
-        const response = await fetch(
-          `http://localhost:3001/projects/${encodeURIComponent(project)}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ newName: newName.trim() }),
-          }
-        );
+    const newName = prompt(`Renommer le projet "${project.name}" :`);
+    if (!newName || newName.trim() === project.name) return;
 
-        if (!response.ok) {
-          const error = await response.json();
-          alert(error.error || "Erreur lors du renommage");
-          return;
-        }
-
-        const result = await response.json();
-
-        const newProjects = projects.map((p) =>
-          p === project ? newName.trim() : p
-        );
-        actions.setProjects(newProjects);
-
-        if (currentProject === project) {
-          actions.setCurrentProject(newName.trim());
-        }
-
-        alert(
-          `Projet renommé avec succès ! ${result.updatedTranslations} traduction(s) mises à jour.`
-        );
-      } catch (error) {
-        console.error("Error renaming project:", error);
-        alert("Erreur lors du renommage du projet");
+    try {
+      const updated = await renameProject(project.id, newName.trim());
+      if (currentProject?.id === project.id) {
+        actions.setCurrentProject(updated);
       }
+    } catch (error) {
+      console.error("Erreur renommage projet:", error);
+      alert(error.message || "Erreur renommage projet");
     }
   };
 
   const handleDeleteProject = async (project, e) => {
     e.stopPropagation();
-    if (
-      window.confirm(
-        `Supprimer le projet "${project}" et toutes ses traductions ?`
-      )
-    ) {
-      try {
-        await fetch(`http://localhost:3001/projects/${project}`, {
-          method: "DELETE",
-        });
-        const newProjects = projects.filter((p) => p !== project);
-        actions.setProjects(newProjects);
+    if (!window.confirm(`Supprimer le projet "${project.name}" ?`)) return;
 
-        if (currentProject === project) {
-          actions.setCurrentProject("");
-          actions.setTranslations([]);
-        }
-      } catch (error) {
-        console.error("Error deleting project:", error);
-        alert("Erreur lors de la suppression du projet");
-      }
+    try {
+      await deleteProject(project.id);
+    } catch (error) {
+      console.error("Erreur suppression projet:", error);
+      alert(error.message || "Erreur suppression projet");
     }
   };
 
@@ -90,9 +77,9 @@ const Sidebar = () => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h2>🌍 Translation Tool</h2>
+        <h2><GlobeIcon /> Translation Tool</h2>
         <button className="sidebar-toggle" onClick={actions.toggleSidebar}>
-          ✕
+          <Cross2Icon />
         </button>
       </div>
 
@@ -105,7 +92,7 @@ const Sidebar = () => {
               onClick={handleCreateProject}
               title="Nouveau projet"
             >
-              ➕
+              <PlusIcon />
             </button>
           </div>
 
@@ -120,27 +107,27 @@ const Sidebar = () => {
             ) : (
               projects.map((project) => (
                 <div
-                  key={project}
+                  key={project.id}
                   className={`project-item ${
-                    currentProject === project ? "active" : ""
+                    currentProject?.id === project.id ? "active" : ""
                   }`}
                   onClick={() => handleProjectSelect(project)}
                 >
-                  <span className="project-name">📁 {project}</span>
+                  <span className="project-name"><FileIcon /> {project.name}</span>
                   <div className="project-actions">
                     <button
                       className="btn-icon rename-btn"
                       onClick={(e) => handleRenameProject(project, e)}
                       title="Renommer"
                     >
-                      ✏️
+                      <Pencil2Icon />
                     </button>
                     <button
                       className="btn-icon delete-btn"
                       onClick={(e) => handleDeleteProject(project, e)}
                       title="Supprimer"
                     >
-                      🗑️
+                      <TrashIcon />
                     </button>
                   </div>
                 </div>
@@ -152,7 +139,9 @@ const Sidebar = () => {
         {currentProject && (
           <div className="current-project-info">
             <h4>Projet actuel</h4>
-            <div className="project-badge">📁 {currentProject}</div>
+            <div className="project-badge">
+              <FileIcon /> {currentProject.name}
+            </div>
           </div>
         )}
       </div>

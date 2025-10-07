@@ -1,84 +1,83 @@
 import { useState } from "react";
 import { useApp } from "../../../context/AppContext";
+import { useTranslationApi } from "../../../hooks/useTranslationApi";
 import "./AddTranslationForm.css";
 
 const AddTranslationForm = () => {
-  const { currentProject, selectedLanguages, dispatch, actions } = useApp();
+  const { currentProject, selectedLanguages } = useApp();
+  const translationApi = useTranslationApi();
   const [newKey, setNewKey] = useState("");
   const [frenchValue, setFrenchValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newKey.trim() || !frenchValue.trim() || !currentProject) return;
+    if (!newKey.trim() || !frenchValue.trim() || !currentProject?.id) return;
 
     setIsLoading(true);
-    try {
-      // 1. Créer la clé
-      const keyResponse = await fetch("http://localhost:3001/translations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: newKey.trim(), project: currentProject }),
-      });
-      const keyData = await keyResponse.json();
-      const translationId = keyData.id;
+    setProgress("Création de la traduction...");
 
-      // 2. Ajouter la valeur française
-      await fetch(
-        `http://localhost:3001/translations/${translationId}/values`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lang: "fr", text: frenchValue.trim() }),
-        },
+    try {
+      const translation = await translationApi.createTranslation(
+        newKey.trim(),
+        currentProject.id
       );
 
-      // 3. Traduction automatique pour les autres langues
-      const otherLanguages = selectedLanguages.filter((lang) => lang !== "fr");
-      const values = { fr: frenchValue.trim() };
+      setProgress("Ajout de la traduction française...");
 
-      for (const targetLang of otherLanguages) {
-        try {
-          const translateResponse = await fetch(
-            "http://localhost:3001/translate",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                text: frenchValue.trim(),
-                source: "fr",
-                target: targetLang,
-                translation_id: translationId,
-              }),
-            },
-          );
-          const translateResult = await translateResponse.json();
-          values[targetLang] = translateResult.translatedText || "";
-        } catch (error) {
-          console.error(`Translation error for ${targetLang}:`, error);
-          values[targetLang] = "";
-        }
+      await translationApi.addTranslationValue(
+        translation.id,
+        "fr",
+        frenchValue.trim()
+      );
+
+      setProgress("Traduction automatique en cours...");
+
+      const otherLanguages = selectedLanguages.filter((lang) => lang !== "fr");
+
+      if (otherLanguages.length > 0) {
+        const translationPromises = otherLanguages.map(async (targetLang) => {
+          try {
+            const result = await translationApi.autoTranslate(
+              frenchValue.trim(),
+              targetLang,
+              "fr",
+              translation.id
+            );
+
+            if (result?.translatedText) {
+              await translationApi.addTranslationValue(
+                translation.id,
+                targetLang,
+                result.translatedText
+              );
+            }
+          } catch (error) {
+            console.error(`Échec traduction ${targetLang}:`, error);
+          }
+        });
+
+        await Promise.allSettled(translationPromises);
       }
 
-      // 4. Ajouter à l'état local
-      const newTranslation = {
-        id: translationId,
-        key: newKey.trim(),
-        project: currentProject,
-        values,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      setProgress("Actualisation des données...");
 
-      dispatch({ type: actions.ADD_TRANSLATION, payload: newTranslation });
+      await translationApi.fetchTranslations(currentProject.id);
 
-      // Reset form
-      setNewKey("");
-      setFrenchValue("");
+      setProgress("Terminé !");
+
+      setTimeout(() => {
+        setNewKey("");
+        setFrenchValue("");
+        setProgress("");
+        setIsLoading(false);
+      }, 1000);
+
     } catch (error) {
-      console.error("Error creating translation:", error);
-      alert("Erreur lors de la création de la traduction");
-    } finally {
+      console.error("Erreur lors de la création de la traduction:", error);
+      alert(`Erreur: ${error.message || "Erreur lors de la création de la traduction"}`);
+      setProgress("");
       setIsLoading(false);
     }
   };
@@ -126,7 +125,7 @@ const AddTranslationForm = () => {
               {isLoading ? (
                 <>
                   <span className="spinner"></span>
-                  Création...
+                  {progress || "Création..."}
                 </>
               ) : (
                 <>✨ Créer + Auto-traduire</>
@@ -134,6 +133,15 @@ const AddTranslationForm = () => {
             </button>
           </div>
         </div>
+
+        {isLoading && progress && (
+          <div className="progress-info">
+            <div className="progress-bar-container">
+              <div className="progress-bar-fill"></div>
+            </div>
+            <span className="progress-text">{progress}</span>
+          </div>
+        )}
 
         <div className="auto-translate-info">
           <span className="info-icon">ℹ️</span>

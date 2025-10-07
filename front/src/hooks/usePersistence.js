@@ -3,7 +3,6 @@ import { useApp } from "../context/AppContext";
 export const usePersistence = () => {
   const { selectedLanguages, currentProject, viewMode } = useApp();
 
-  // Sauvegarder automatiquement les préférences
   const savePreferences = () => {
     const preferences = {
       selectedLanguages,
@@ -17,7 +16,6 @@ export const usePersistence = () => {
     );
   };
 
-  // Restaurer les préférences
   const restorePreferences = () => {
     try {
       const saved = localStorage.getItem("translationToolPreferences");
@@ -30,7 +28,6 @@ export const usePersistence = () => {
     return null;
   };
 
-  // Effacer les préférences
   const clearPreferences = () => {
     localStorage.removeItem("translationToolPreferences");
     localStorage.removeItem("selectedLanguages");
