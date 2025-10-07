@@ -64,4 +64,4 @@ La brique de traduction automatique utilise [LibreTranslate](https://github.com/
 
 ---
 
-Pour toute question ou contribution, ouvrez une issue ou contactez Anthony Marcelin sur GitHub !
+Pour toute question ou contribution, ouvrez une issue ou contactez Anthony Marcelin sur GitHub !!
