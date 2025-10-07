@@ -32,10 +32,18 @@ const TranslationsTable = () => {
     await translationApi.exportTranslations(currentProject.id, selectedLanguages);
   };
 
-  const handleChangeValue = (translationId, lang, value) => {
-    actions.updateTranslationValue(translationId, lang, value);
-    translationApi.updateTranslationValue(translationId, lang, value);
+  const handleDeleteTranslation = async (translationId) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette traduction ?")) return;
+
+    try {
+      await translationApi.deleteTranslation(translationId);
+      actions.removeTranslation(translationId);
+    } catch (error) {
+      console.error("Error deleting translation:", error);
+      alert("Erreur lors de la suppression de la traduction. Veuillez réessayer.");
+    }
   };
+
 
   const handleKeyDown = (e, translationId, lang) => {
     if (e.key === "Enter") {
