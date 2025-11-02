@@ -8,8 +8,20 @@ const db = require("./db-better");
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://translate.drannocserver.com"],
+    credentials: true,
+    optionsSuccessStatus: 200,
   }),
 );
+// Quick fix: if Traefik didn't strip the `/api` prefix, remove it here so
+// existing route definitions (e.g. `/translate`) continue to work.
+app.use((req, res, next) => {
+  if (req.url === "/api") {
+    req.url = "/";
+  } else if (req.url.startsWith("/api/")) {
+    req.url = req.url.replace(/^\/api/, "");
+  }
+  next();
+});
 app.use(express.json());
 
 // Traduction automatique via LibreTranslate
