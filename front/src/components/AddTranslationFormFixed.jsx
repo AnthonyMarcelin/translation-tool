@@ -1,83 +1,74 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
+import { apiJson } from "../lib/api";
 import "./AddTranslationForm.css";
 
 const AddTranslationForm = () => {
-  const { currentProject, selectedLanguages, dispatch, actions } = useApp();
+  const { currentProject, projectLanguages, selectedLanguages, dispatch, actions } = useApp();
   const [newKey, setNewKey] = useState("");
-  const [frenchValue, setFrenchValue] = useState("");
+  const [sourceValue, setSourceValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const sourceLang = projectLanguages.find(l => l.is_source)?.lang_code || selectedLanguages[0] || "fr";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newKey.trim() || !frenchValue.trim() || !currentProject) return;
+    if (!newKey.trim() || !sourceValue.trim() || !currentProject?.id) return;
 
     setIsLoading(true);
     try {
-      // 1. Créer la clé
-      const keyResponse = await fetch("http://localhost:3001/translations", {
+      // 1. Create the key
+      const keyData = await apiJson(`/projects/${currentProject.id}/translations`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: newKey.trim(), project: currentProject }),
+        body: JSON.stringify({ key: newKey.trim() }),
       });
-      const keyData = await keyResponse.json();
       const translationId = keyData.id;
 
-      // 2. Ajouter la valeur française
-      await fetch(
-        `http://localhost:3001/translations/${translationId}/values`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lang: "fr", text: frenchValue.trim() }),
-        },
-      );
+      // 2. Add source language value
+      await apiJson(`/translations/${translationId}/values`, {
+        method: "POST",
+        body: JSON.stringify({ lang: sourceLang, text: sourceValue.trim() }),
+      });
 
-      // 3. Traduction automatique pour les autres langues
-      const otherLanguages = selectedLanguages.filter((lang) => lang !== "fr");
-      const values = { fr: frenchValue.trim() };
+      // 3. Auto-translate to other selected languages
+      const otherLanguages = selectedLanguages.filter(l => l !== sourceLang);
+      const values = { [sourceLang]: sourceValue.trim() };
 
-      for (const targetLang of otherLanguages) {
-        try {
-          const translateResponse = await fetch(
-            "http://localhost:3001/translate",
-            {
+      await Promise.allSettled(
+        otherLanguages.map(async (targetLang) => {
+          try {
+            const result = await apiJson("/translate", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                text: frenchValue.trim(),
-                source: "fr",
+                text: sourceValue.trim(),
+                source: sourceLang,
                 target: targetLang,
                 translation_id: translationId,
               }),
-            },
-          );
-          const translateResult = await translateResponse.json();
-          values[targetLang] = translateResult.translatedText || "";
-        } catch (error) {
-          console.error(`Translation error for ${targetLang}:`, error);
-          values[targetLang] = "";
-        }
-      }
+            });
+            values[targetLang] = result.translatedText || "";
+          } catch {
+            values[targetLang] = "";
+          }
+        })
+      );
 
-      // 4. Ajouter à l'état local
-      const newTranslation = {
-        id: translationId,
-        key: newKey.trim(),
-        project: currentProject,
-        values,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      dispatch({
+        type: actions.ADD_TRANSLATION,
+        payload: {
+          id: translationId,
+          key: newKey.trim(),
+          project_id: currentProject.id,
+          values,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      });
 
-      dispatch({ type: actions.ADD_TRANSLATION, payload: newTranslation });
-
-      // Reset form
       setNewKey("");
-      setFrenchValue("");
+      setSourceValue("");
     } catch (error) {
-      console.error("Error creating translation:", error);
-      alert("Erreur lors de la création de la traduction");
+      alert(error.message || "Erreur lors de la création");
     } finally {
       setIsLoading(false);
     }
@@ -85,10 +76,11 @@ const AddTranslationForm = () => {
 
   if (!currentProject) return null;
 
+  const sourceLangInfo = projectLanguages.find(l => l.lang_code === sourceLang);
+
   return (
     <div className="add-translation-form">
       <h3>➕ Ajouter une nouvelle traduction</h3>
-
       <form onSubmit={handleSubmit} className="form">
         <div className="form-row">
           <div className="input-group">
@@ -103,46 +95,33 @@ const AddTranslationForm = () => {
               disabled={isLoading}
             />
           </div>
-
           <div className="input-group">
-            <label htmlFor="french-input">🇫🇷 Texte en français</label>
+            <label htmlFor="source-input">Texte en {sourceLang.toUpperCase()} (langue source)</label>
             <input
-              id="french-input"
+              id="source-input"
               type="text"
-              placeholder="Bienvenue sur notre site"
-              value={frenchValue}
-              onChange={(e) => setFrenchValue(e.target.value)}
+              placeholder={`Texte en ${sourceLang.toUpperCase()}...`}
+              value={sourceValue}
+              onChange={(e) => setSourceValue(e.target.value)}
               className="form-input"
               disabled={isLoading}
             />
           </div>
-
           <div className="submit-group">
             <button
               type="submit"
-              disabled={!newKey.trim() || !frenchValue.trim() || isLoading}
+              disabled={!newKey.trim() || !sourceValue.trim() || isLoading}
               className={`submit-btn ${isLoading ? "loading" : ""}`}
             >
-              {isLoading ? (
-                <>
-                  <span className="spinner"></span>
-                  Création...
-                </>
-              ) : (
-                <>✨ Créer + Auto-traduire</>
-              )}
+              {isLoading ? <><span className="spinner"></span>Création...</> : <>✨ Créer + Auto-traduire</>}
             </button>
           </div>
         </div>
-
         <div className="auto-translate-info">
           <span className="info-icon">ℹ️</span>
           <span>
-            La traduction française sera automatiquement traduite vers :{" "}
-            {selectedLanguages
-              .filter((lang) => lang !== "fr")
-              .join(", ")
-              .toUpperCase() || "aucune langue sélectionnée"}
+            Traduction automatique vers :{" "}
+            {selectedLanguages.filter(l => l !== sourceLang).join(", ").toUpperCase() || "aucune autre langue sélectionnée"}
           </span>
         </div>
       </form>

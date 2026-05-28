@@ -5,6 +5,79 @@
   overflow: hidden;
 }
 
+/* Checkbox column */
+.checkbox-column, .checkbox-cell {
+  width: 36px;
+  padding: 8px !important;
+  text-align: center;
+}
+
+/* Selected row */
+.translation-row.selected {
+  background: rgba(99,102,241,0.06) !important;
+}
+
+/* Status dot */
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cell-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* Key description */
+.key-desc {
+  display: block;
+  color: #9ca3af;
+  font-size: 0.7rem;
+  margin-top: 2px;
+}
+
+/* Bulk delete */
+.bulk-delete-btn {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #ef4444;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.bulk-delete-btn:hover { background: rgba(239,68,68,0.2); }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid #e1e5e9;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.pagination button {
+  background: #f8f9fa;
+  border: 1px solid #e1e5e9;
+  color: #495057;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination button:not(:disabled):hover { background: #e9ecef; }
+
 .table-header {
   padding: 20px 25px;
   background: #f8f9fa;

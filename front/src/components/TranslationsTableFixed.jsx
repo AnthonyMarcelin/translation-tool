@@ -2,203 +2,139 @@ import { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { useFilters } from "../hooks/useFilters";
 import { LANGUAGES } from "../constants";
+import { apiJson, apiFetch, API_BASE } from "../lib/api";
 import "./TranslationsTable.css";
 
+const STATUS_COLORS = { draft: "#64748b", reviewed: "#f59e0b", approved: "#10b981" };
+const STATUS_LABELS = { draft: "Brouillon", reviewed: "Relu", approved: "Approuvé" };
+
 const TranslationsTable = () => {
-  const { selectedLanguages, dispatch, actions } = useApp();
+  const { currentProject, selectedLanguages, dispatch, actions } = useApp();
   const { filteredTranslations } = useFilters();
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
+
+  const paginated = filteredTranslations.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(filteredTranslations.length / pageSize);
 
   const startEdit = (translationId, lang) => {
-    const translation = filteredTranslations.find(
-      (t) => t.id === translationId,
-    );
-    const currentValue = translation?.values?.[lang] || "";
+    const t = filteredTranslations.find(t => t.id === translationId);
     setEditingCell(`${translationId}-${lang}`);
-    setEditValue(currentValue);
+    setEditValue(t?.values?.[lang] || "");
   };
 
   const saveEdit = async (translationId, lang) => {
-    try {
-      // Trouver l'ID de la valeur existante ou créer une nouvelle
-      const valuesResponse = await fetch(
-        `http://localhost:3001/translations/${translationId}/values`,
-      );
-      const existingValues = await valuesResponse.json();
-      const existingValue = existingValues.find((v) => v.lang === lang);
+    const t = filteredTranslations.find(t => t.id === translationId);
+    const valueId = t?.value_ids?.[lang];
 
-      if (existingValue) {
-        // Mettre à jour
-        await fetch(`http://localhost:3001/values/${existingValue.id}`, {
+    try {
+      if (valueId) {
+        await apiJson(`/values/${valueId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: editValue }),
         });
       } else {
-        // Créer nouveau
-        await fetch(
-          `http://localhost:3001/translations/${translationId}/values`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lang, text: editValue }),
-          },
-        );
+        await apiJson(`/translations/${translationId}/values`, {
+          method: "POST",
+          body: JSON.stringify({ lang, text: editValue }),
+        });
       }
-
-      // Mettre à jour l'état local
-      dispatch({
-        type: actions.UPDATE_TRANSLATION_VALUE,
-        payload: { translationId, lang, value: editValue },
-      });
-    } catch (error) {
-      console.error("Error updating translation value:", error);
+      dispatch({ type: actions.UPDATE_TRANSLATION_VALUE, payload: { translationId, lang, value: editValue } });
+    } catch (err) {
+      console.error("Save error:", err);
     }
-
     setEditingCell(null);
     setEditValue("");
   };
 
-  const cancelEdit = () => {
-    setEditingCell(null);
-    setEditValue("");
-  };
+  const cancelEdit = () => { setEditingCell(null); setEditValue(""); };
 
   const handleKeyDown = (e, translationId, lang) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      saveEdit(translationId, lang);
-    } else if (e.key === "Escape") {
-      cancelEdit();
-    }
+    if (e.key === "Enter") { e.preventDefault(); saveEdit(translationId, lang); }
+    else if (e.key === "Escape") cancelEdit();
   };
 
   const handleAutoTranslate = async (translationId, fromLang, toLang) => {
-    const translation = filteredTranslations.find(
-      (t) => t.id === translationId,
-    );
-    const sourceText = translation?.values?.[fromLang];
-
-    if (!sourceText) {
-      alert(`Aucun texte source en ${fromLang.toUpperCase()}`);
-      return;
-    }
-
-    console.log("🚀 Auto-translation:", {
-      translationId,
-      fromLang,
-      toLang,
-      sourceText,
-    });
+    const t = filteredTranslations.find(t => t.id === translationId);
+    const sourceText = t?.values?.[fromLang];
+    if (!sourceText) { alert(`Aucun texte source en ${fromLang.toUpperCase()}`); return; }
 
     try {
-      const response = await fetch("http://localhost:3001/translate", {
+      const result = await apiJson("/translate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: sourceText,
-          source: fromLang,
-          target: toLang,
-          // Ne pas passer translation_id pour éviter l'enregistrement automatique
-        }),
+        body: JSON.stringify({ text: sourceText, source: fromLang, target: toLang, translation_id: translationId }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log("✅ Translation result:", result);
-
       if (result.translatedText) {
-        // Mettre à jour l'état local
-        dispatch({
-          type: actions.UPDATE_TRANSLATION_VALUE,
-          payload: {
-            translationId,
-            lang: toLang,
-            value: result.translatedText,
-          },
-        });
-        console.log("✅ State updated");
-
-        // Aussi enregistrer en base de données
-        try {
-          const saveResponse = await fetch(
-            `http://localhost:3001/translations/${translationId}/values`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                lang: toLang,
-                text: result.translatedText,
-              }),
-            },
-          );
-          if (!saveResponse.ok) {
-            console.warn("Failed to save to database:", saveResponse.status);
-          }
-        } catch (saveError) {
-          console.warn("Save to DB failed:", saveError);
-        }
+        dispatch({ type: actions.UPDATE_TRANSLATION_VALUE, payload: { translationId, lang: toLang, value: result.translatedText } });
       }
-    } catch (error) {
-      console.error("❌ Auto-translation error:", error);
-      alert(`Erreur de traduction: ${error.message}`);
+    } catch (err) {
+      alert(`Erreur de traduction : ${err.message}`);
     }
   };
 
-  const handleDeleteTranslation = async (translationId) => {
+  const handleDelete = async (translationId) => {
     if (!window.confirm("Supprimer cette traduction ?")) return;
-
     try {
-      await fetch(`http://localhost:3001/translations/${translationId}`, {
-        method: "DELETE",
-      });
+      await apiJson(`/translations/${translationId}`, { method: "DELETE" });
       dispatch({ type: actions.REMOVE_TRANSLATION, payload: translationId });
-    } catch (error) {
-      console.error("Error deleting translation:", error);
+      setSelected(s => { const n = new Set(s); n.delete(translationId); return n; });
+    } catch (err) {
+      alert(err.message);
     }
   };
 
-  const getLanguageInfo = (langCode) => {
-    return LANGUAGES.find((lang) => lang.code === langCode);
-  };
-
-  const exportTranslations = async () => {
-    const currentProject = filteredTranslations[0]?.project;
-    if (!currentProject) return;
-
-    console.log("🚀 Export ZIP pour projet:", currentProject);
-
+  const handleBulkDelete = async () => {
+    if (!currentProject || selected.size === 0) return;
+    if (!window.confirm(`Supprimer ${selected.size} traduction(s) ?`)) return;
     try {
-      // Utiliser le nouveau endpoint ZIP
-      const url = `http://localhost:3001/export/project/${currentProject}/zip`;
-      console.log("📡 Appel à:", url);
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de l'export");
-      }
-
-      // Télécharger le fichier ZIP
-      const blob = await response.blob();
-      console.log("📦 Blob reçu, taille:", blob.size, "bytes");
-
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = `${currentProject}-translations.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error("Export error:", error);
+      await apiJson(`/projects/${currentProject.id}/translations/bulk-delete`, {
+        method: "POST",
+        body: JSON.stringify({ ids: [...selected] }),
+      });
+      selected.forEach(id => dispatch({ type: actions.REMOVE_TRANSLATION, payload: id }));
+      setSelected(new Set());
+    } catch (err) {
+      alert(err.message);
     }
   };
+
+  const exportZip = async () => {
+    if (!currentProject) return;
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`${API_BASE}/projects/${currentProject.id}/export/zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${currentProject.name}-translations.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelected(s => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === paginated.length) setSelected(new Set());
+    else setSelected(new Set(paginated.map(t => t.id)));
+  };
+
+  const getLangInfo = (code) => LANGUAGES.find(l => l.code === code);
 
   if (filteredTranslations.length === 0) {
     return (
@@ -213,11 +149,16 @@ const TranslationsTable = () => {
   return (
     <div className="translations-table-container">
       <div className="table-header">
-        <h3>📊 Traductions ({filteredTranslations.length})</h3>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <h3>📊 Traductions ({filteredTranslations.length})</h3>
+          {selected.size > 0 && (
+            <button className="bulk-delete-btn" onClick={handleBulkDelete}>
+              🗑️ Supprimer {selected.size} sélection(s)
+            </button>
+          )}
+        </div>
         <div className="table-actions">
-          <button className="export-btn" onClick={exportTranslations}>
-            📥 Exporter
-          </button>
+          <button className="export-btn" onClick={exportZip}>📥 Export ZIP</button>
         </div>
       </div>
 
@@ -225,17 +166,18 @@ const TranslationsTable = () => {
         <table className="translations-table">
           <thead>
             <tr>
+              <th className="checkbox-column">
+                <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={toggleAll} />
+              </th>
               <th className="key-column">Clé</th>
-              {selectedLanguages.map((langCode) => {
-                const lang = getLanguageInfo(langCode);
+              {selectedLanguages.map(code => {
+                const lang = getLangInfo(code);
                 return (
-                  <th key={langCode} className="lang-column">
+                  <th key={code} className="lang-column">
                     <div className="lang-header">
                       <span className="lang-flag">{lang?.flag}</span>
                       <span className="lang-name">{lang?.name}</span>
-                      <span className="lang-code">
-                        {langCode.toUpperCase()}
-                      </span>
+                      <span className="lang-code">{code.toUpperCase()}</span>
                     </div>
                   </th>
                 );
@@ -244,36 +186,33 @@ const TranslationsTable = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredTranslations.slice(0, 50).map((translation) => (
-              <tr key={translation.id} className="translation-row">
+            {paginated.map(translation => (
+              <tr key={translation.id} className={`translation-row ${selected.has(translation.id) ? "selected" : ""}`}>
+                <td className="checkbox-cell">
+                  <input type="checkbox" checked={selected.has(translation.id)} onChange={() => toggleSelect(translation.id)} />
+                </td>
                 <td className="key-cell">
                   <div className="key-content">
                     <span className="key-text">{translation.key}</span>
-                    <div className="key-meta">
-                      <small>📁 {translation.project}</small>
-                    </div>
+                    {translation.description && <small className="key-desc">{translation.description}</small>}
                   </div>
                 </td>
 
-                {selectedLanguages.map((langCode) => {
+                {selectedLanguages.map(langCode => {
                   const cellKey = `${translation.id}-${langCode}`;
                   const isEditing = editingCell === cellKey;
                   const value = translation.values?.[langCode] || "";
+                  const status = translation.statuses?.[langCode] || "draft";
                   const isEmpty = !value.trim();
 
                   return (
-                    <td
-                      key={langCode}
-                      className={`translation-cell ${isEmpty ? "empty" : ""}`}
-                    >
+                    <td key={langCode} className={`translation-cell ${isEmpty ? "empty" : ""}`}>
                       {isEditing ? (
                         <div className="edit-mode">
                           <textarea
                             value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={(e) =>
-                              handleKeyDown(e, translation.id, langCode)
-                            }
+                            onChange={e => setEditValue(e.target.value)}
+                            onKeyDown={e => handleKeyDown(e, translation.id, langCode)}
                             onBlur={() => saveEdit(translation.id, langCode)}
                             className="edit-input"
                             rows="2"
@@ -281,38 +220,22 @@ const TranslationsTable = () => {
                           />
                         </div>
                       ) : (
-                        <div
-                          className="cell-content"
-                          onClick={() => startEdit(translation.id, langCode)}
-                        >
+                        <div className="cell-content" onClick={() => startEdit(translation.id, langCode)}>
                           {isEmpty ? (
                             <div className="empty-state">
-                              <span className="empty-text">
-                                Cliquer pour saisir manuellement
-                              </span>
+                              <span className="empty-text">Cliquer pour saisir</span>
                               <div className="auto-translate-options">
                                 {selectedLanguages
-                                  .filter(
-                                    (lang) =>
-                                      lang !== langCode &&
-                                      translation.values?.[lang],
-                                  )
-                                  .map((sourceLang) => (
+                                  .filter(l => l !== langCode && translation.values?.[l])
+                                  .slice(0, 2)
+                                  .map(srcLang => (
                                     <button
-                                      key={sourceLang}
+                                      key={srcLang}
                                       className="auto-translate-btn"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleAutoTranslate(
-                                          translation.id,
-                                          sourceLang,
-                                          langCode,
-                                        );
-                                      }}
-                                      title={`Traduire depuis ${sourceLang.toUpperCase()} vers ${langCode.toUpperCase()}`}
+                                      onClick={e => { e.stopPropagation(); handleAutoTranslate(translation.id, srcLang, langCode); }}
+                                      title={`Traduire depuis ${srcLang.toUpperCase()}`}
                                     >
-                                      {getLanguageInfo(sourceLang)?.flag} →{" "}
-                                      {getLanguageInfo(langCode)?.flag}
+                                      {getLangInfo(srcLang)?.flag} → {getLangInfo(langCode)?.flag}
                                     </button>
                                   ))}
                               </div>
@@ -320,10 +243,13 @@ const TranslationsTable = () => {
                           ) : (
                             <div className="value-display">
                               <span className="value-text">{value}</span>
-                              <div className="cell-actions">
-                                <button className="edit-btn" title="Éditer">
-                                  ✏️
-                                </button>
+                              <div className="cell-meta">
+                                <span
+                                  className="status-dot"
+                                  style={{ background: STATUS_COLORS[status] }}
+                                  title={STATUS_LABELS[status]}
+                                />
+                                <button className="edit-btn" title="Éditer">✏️</button>
                               </div>
                             </div>
                           )}
@@ -334,21 +260,21 @@ const TranslationsTable = () => {
                 })}
 
                 <td className="actions-cell">
-                  <div className="row-actions">
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteTranslation(translation.id)}
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+                  <button className="delete-btn" onClick={() => handleDelete(translation.id)} title="Supprimer">🗑️</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>←</button>
+          <span>Page {page} / {totalPages}</span>
+          <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>→</button>
+        </div>
+      )}
     </div>
   );
 };

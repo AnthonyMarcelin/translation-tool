@@ -1,94 +1,58 @@
-import React from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
+import { useAuth } from "../context/AuthContext";
+import { apiJson } from "../lib/api";
 import "./ProjectActions.css";
 import "./Sidebar.css";
 
 const Sidebar = () => {
-  const { projects, currentProject, sidebarOpen, dispatch, actions } = useApp();
+  const { orgs, projects, currentProject, currentOrg, sidebarOpen, dispatch, actions } = useApp();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const handleProjectSelect = (project) => {
     dispatch({ type: actions.SET_CURRENT_PROJECT, payload: project });
   };
 
-  const handleCreateProject = () => {
-    const name = prompt("Nom du nouveau projet :");
-    if (name && name.trim()) {
-      // Simple update without API call for now
-      const newProjects = [...projects, name.trim()];
-      dispatch({ type: actions.SET_PROJECTS, payload: newProjects });
-      dispatch({ type: actions.SET_CURRENT_PROJECT, payload: name.trim() });
-    }
-  };
-
-  const handleRenameProject = async (project, e) => {
-    e.stopPropagation();
-    const newName = prompt(`Renommer le projet "${project}" :`);
-    if (newName && newName.trim() && newName.trim() !== project) {
-      try {
-        const response = await fetch(
-          `http://localhost:3001/projects/${encodeURIComponent(project)}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ newName: newName.trim() }),
-          },
-        );
-
-        if (!response.ok) {
-          const error = await response.json();
-          alert(error.error || "Erreur lors du renommage");
-          return;
-        }
-
-        const result = await response.json();
-
-        // Mettre à jour la liste des projets
-        const newProjects = projects.map((p) =>
-          p === project ? newName.trim() : p,
-        );
-        dispatch({ type: actions.SET_PROJECTS, payload: newProjects });
-
-        // Si c'est le projet actuel, le mettre à jour aussi
-        if (currentProject === project) {
-          dispatch({
-            type: actions.SET_CURRENT_PROJECT,
-            payload: newName.trim(),
-          });
-        }
-
-        alert(
-          `Projet renommé avec succès ! ${result.updatedTranslations} traduction(s) mises à jour.`,
-        );
-      } catch (error) {
-        console.error("Error renaming project:", error);
-        alert("Erreur lors du renommage du projet");
-      }
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (!newName.trim() || !currentOrg) return;
+    try {
+      const project = await apiJson(`/orgs/${currentOrg.slug}/projects`, {
+        method: "POST",
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      dispatch({ type: actions.SET_PROJECTS, payload: [...projects, project] });
+      dispatch({ type: actions.SET_CURRENT_PROJECT, payload: project });
+      setNewName("");
+      setCreating(false);
+    } catch (err) {
+      alert(err.message || "Erreur lors de la création du projet");
     }
   };
 
   const handleDeleteProject = async (project, e) => {
     e.stopPropagation();
-    if (
-      window.confirm(
-        `Supprimer le projet "${project}" et toutes ses traductions ?`,
-      )
-    ) {
-      try {
-        await fetch(`http://localhost:3001/projects/${project}`, {
-          method: "DELETE",
-        });
-        const newProjects = projects.filter((p) => p !== project);
-        dispatch({ type: actions.SET_PROJECTS, payload: newProjects });
-
-        if (currentProject === project) {
-          dispatch({ type: actions.SET_CURRENT_PROJECT, payload: "" });
-          dispatch({ type: actions.SET_TRANSLATIONS, payload: [] });
-        }
-      } catch (error) {
-        console.error("Error deleting project:", error);
-        alert("Erreur lors de la suppression du projet");
+    if (!window.confirm(`Supprimer "${project.name}" et toutes ses traductions ?`)) return;
+    try {
+      await apiJson(`/projects/${project.id}`, { method: "DELETE" });
+      const newProjects = projects.filter((p) => p.id !== project.id);
+      dispatch({ type: actions.SET_PROJECTS, payload: newProjects });
+      if (currentProject?.id === project.id) {
+        dispatch({ type: actions.SET_CURRENT_PROJECT, payload: null });
+        dispatch({ type: actions.SET_TRANSLATIONS, payload: [] });
       }
+    } catch (err) {
+      alert(err.message || "Erreur lors de la suppression");
     }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
 
   if (!sidebarOpen) return null;
@@ -97,73 +61,91 @@ const Sidebar = () => {
     <div className="sidebar">
       <div className="sidebar-header">
         <h2>🌍 Translation Tool</h2>
-        <button
-          className="sidebar-toggle"
-          onClick={() => dispatch({ type: actions.TOGGLE_SIDEBAR })}
-        >
-          ✕
-        </button>
+        <button className="sidebar-toggle" onClick={() => dispatch({ type: actions.TOGGLE_SIDEBAR })}>✕</button>
       </div>
+
+      {/* User info */}
+      {user && (
+        <div className="sidebar-user">
+          <div className="user-avatar">{user.name?.[0]?.toUpperCase() || "U"}</div>
+          <div className="user-info">
+            <div className="user-name">{user.name}</div>
+            <div className="user-email">{user.email}</div>
+          </div>
+          <button className="logout-btn" onClick={handleLogout} title="Se déconnecter">⏏</button>
+        </div>
+      )}
+
+      {/* Org selector */}
+      {orgs.length > 1 && (
+        <div className="org-selector">
+          <label>Organisation</label>
+          <select value={currentOrg?.slug || ""} onChange={(e) => {
+            const org = orgs.find(o => o.slug === e.target.value);
+            dispatch({ type: actions.SET_CURRENT_ORG, payload: org });
+          }}>
+            {orgs.map(o => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="sidebar-content">
         <div className="projects-section">
           <div className="section-header">
-            <h3>Projets</h3>
-            <button
-              className="btn-icon"
-              onClick={handleCreateProject}
-              title="Nouveau projet"
-            >
-              ➕
-            </button>
+            <h3>Projets {currentOrg && <span className="org-tag">{currentOrg.name}</span>}</h3>
+            <button className="btn-icon" onClick={() => setCreating(true)} title="Nouveau projet">➕</button>
           </div>
+
+          {creating && (
+            <form onSubmit={handleCreateProject} className="new-project-form">
+              <input
+                type="text"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="Nom du projet"
+                autoFocus
+              />
+              <div className="new-project-actions">
+                <button type="submit" className="btn-create">Créer</button>
+                <button type="button" className="btn-cancel" onClick={() => { setCreating(false); setNewName(""); }}>Annuler</button>
+              </div>
+            </form>
+          )}
 
           <div className="projects-list">
             {projects.length === 0 ? (
               <div className="empty-state">
                 <p>Aucun projet</p>
-                <button onClick={handleCreateProject} className="btn-primary">
-                  Créer le premier projet
-                </button>
+                <button onClick={() => setCreating(true)} className="btn-primary">Créer le premier projet</button>
               </div>
             ) : (
               projects.map((project) => (
                 <div
-                  key={project}
-                  className={`project-item ${
-                    currentProject === project ? "active" : ""
-                  }`}
+                  key={project.id}
+                  className={`project-item ${currentProject?.id === project.id ? "active" : ""}`}
                   onClick={() => handleProjectSelect(project)}
                 >
-                  <span className="project-name">📁 {project}</span>
+                  <span className="project-name">📁 {project.name}</span>
+                  {project.key_count !== undefined && (
+                    <span className="project-key-count">{project.key_count}</span>
+                  )}
                   <div className="project-actions">
                     <button
-                      className="btn-icon rename-btn"
-                      onClick={(e) => handleRenameProject(project, e)}
-                      title="Renommer"
+                      className="btn-icon settings-btn"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}/settings`); }}
+                      title="Paramètres"
                     >
-                      ✏️
+                      ⚙️
                     </button>
-                    <button
-                      className="btn-icon delete-btn"
-                      onClick={(e) => handleDeleteProject(project, e)}
-                      title="Supprimer"
-                    >
-                      🗑️
-                    </button>
+                    {(project.my_role === "owner" || project.my_role === "manager") && (
+                      <button className="btn-icon delete-btn" onClick={(e) => handleDeleteProject(project, e)} title="Supprimer">🗑️</button>
+                    )}
                   </div>
                 </div>
               ))
             )}
           </div>
         </div>
-
-        {currentProject && (
-          <div className="current-project-info">
-            <h4>Projet actuel</h4>
-            <div className="project-badge">📁 {currentProject}</div>
-          </div>
-        )}
       </div>
     </div>
   );
