@@ -3,10 +3,10 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import { AppProvider, useApp } from "./context/AppContext";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import SidebarFixed from "./components/SidebarFixed";
+import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
-import AddTranslationFormFixed from "./components/AddTranslationFormFixed";
-import TranslationsTable from "./components/TranslationsTableFixed";
+import AddTranslationForm from "./components/AddTranslationForm";
+import TranslationsTable from "./components/TranslationsTable";
 import TranslationsCards from "./components/TranslationsCards";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -64,13 +64,13 @@ const AppContent = () => {
 
   return (
     <div className={`app ${sidebarOpen ? "sidebar-open" : ""}`}>
-      <SidebarFixed />
+      <Sidebar />
       <div className="main-content">
         <Header />
         <div className="content-area">
           {currentProject ? (
             <>
-              <AddTranslationFormFixed />
+              <AddTranslationForm />
               {viewMode === "table" ? <TranslationsTable /> : <TranslationsCards />}
             </>
           ) : (

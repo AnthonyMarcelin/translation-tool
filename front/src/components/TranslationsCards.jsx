@@ -1,12 +1,11 @@
 import { useApp } from "../context/AppContext";
-import { useApi } from "../hooks/useApiOptimized";
+import { apiJson, API_BASE } from "../lib/api";
 import { useFilters } from "../hooks/useFilters";
 import { LANGUAGES } from "../constants";
 import "./TranslationsCards.css";
 
 const TranslationsCards = () => {
-  const { selectedLanguages } = useApp();
-  const api = useApi();
+  const { selectedLanguages, currentProject, dispatch, actions } = useApp();
   const { filteredTranslations } = useFilters();
 
   const getLanguageInfo = (langCode) => {
@@ -26,6 +25,16 @@ const TranslationsCards = () => {
     };
   };
 
+  const handleDeleteTranslation = async (id) => {
+    if (!window.confirm("Supprimer cette traduction ?")) return;
+    try {
+      await apiJson('/translations/' + id, { method: 'DELETE' });
+      dispatch({ type: actions.REMOVE_TRANSLATION, payload: id });
+    } catch (e) {
+      alert('Erreur: ' + e.message);
+    }
+  };
+
   const handleAutoTranslate = async (translationId, fromLang, toLang) => {
     const translation = filteredTranslations.find(
       (t) => t.id === translationId,
@@ -37,7 +46,61 @@ const TranslationsCards = () => {
       return;
     }
 
-    await api.autoTranslate(translationId, fromLang, toLang, sourceText);
+    try {
+      const data = await apiJson('/translate', {
+        method: 'POST',
+        body: JSON.stringify({ text: sourceText, source: fromLang, target: toLang, translation_id: translationId }),
+      });
+      dispatch({
+        type: actions.UPDATE_TRANSLATION_VALUE,
+        payload: { translationId, lang: toLang, value: data.translatedText || data.text },
+      });
+    } catch (e) {
+      alert('Erreur de traduction: ' + e.message);
+    }
+  };
+
+  const handleUpdateTranslationValue = async (translation, langCode, text) => {
+    const valueId = translation.value_ids?.[langCode];
+    try {
+      if (valueId) {
+        await apiJson('/values/' + valueId, {
+          method: 'PUT',
+          body: JSON.stringify({ text }),
+        });
+      } else {
+        await apiJson('/translations/' + translation.id + '/values', {
+          method: 'POST',
+          body: JSON.stringify({ lang: langCode, text }),
+        });
+      }
+      dispatch({
+        type: actions.UPDATE_TRANSLATION_VALUE,
+        payload: { translationId: translation.id, lang: langCode, value: text },
+      });
+    } catch (e) {
+      alert('Erreur: ' + e.message);
+    }
+  };
+
+  const handleExportTranslations = async () => {
+    if (!currentProject) return;
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch(`${API_BASE}/projects/${currentProject.id}/export/zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentProject.slug || currentProject.id}-translations.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Erreur export: ' + e.message);
+    }
   };
 
   if (filteredTranslations.length === 0) {
@@ -57,12 +120,7 @@ const TranslationsCards = () => {
         <div className="cards-actions">
           <button
             className="export-btn"
-            onClick={() =>
-              api.exportTranslations(
-                filteredTranslations[0]?.project,
-                selectedLanguages,
-              )
-            }
+            onClick={handleExportTranslations}
           >
             📥 Exporter
           </button>
@@ -82,11 +140,7 @@ const TranslationsCards = () => {
                 <div className="card-actions">
                   <button
                     className="delete-btn"
-                    onClick={() => {
-                      if (window.confirm("Supprimer cette traduction ?")) {
-                        api.deleteTranslation(translation.id);
-                      }
-                    }}
+                    onClick={() => handleDeleteTranslation(translation.id)}
                     title="Supprimer"
                   >
                     🗑️
@@ -162,8 +216,8 @@ const TranslationsCards = () => {
                             <textarea
                               value={value}
                               onChange={(e) =>
-                                api.updateTranslationValue(
-                                  translation.id,
+                                handleUpdateTranslationValue(
+                                  translation,
                                   langCode,
                                   e.target.value,
                                 )
