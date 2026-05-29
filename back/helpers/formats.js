@@ -51,7 +51,22 @@ function handleImport(projectId, userId, req, res) {
       else if (ext === 'csv') {
         const lines = content.split('\n').slice(1);
         lines.forEach(line => {
-          const [key, value] = line.split(',').map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"'));
+          if (!line.trim()) return;
+          // RFC 4180-compatible split — handles commas inside quoted values
+          const cols = [];
+          let cur = '', inQ = false;
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === '"') {
+              if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+              else inQ = !inQ;
+            } else if (line[i] === ',' && !inQ) {
+              cols.push(cur); cur = '';
+            } else {
+              cur += line[i];
+            }
+          }
+          cols.push(cur);
+          const [key, value] = cols;
           if (key && value !== undefined) data[key] = value;
         });
       } else data = JSON.parse(content);

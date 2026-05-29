@@ -127,7 +127,7 @@ router.put('/values/:id', (req, res) => {
 
   const { text, status } = req.body;
   if (text !== undefined) db.prepare('UPDATE translation_values SET text=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(text, req.user.id, v.id);
-  if (status) {
+  if (status !== undefined) {
     if (!['draft','reviewed','approved'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
     if (status === 'approved' && !canManageProject(req.user.id, v.project_id)) {
       return res.status(403).json({ error: 'Only manager+ can approve translations' });

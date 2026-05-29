@@ -75,8 +75,14 @@ router.post('/auth/refresh', (req, res) => {
   const user = db.prepare('SELECT id, email, name FROM users WHERE id=?').get(record.user_id);
   if (!user) return res.status(401).json({ error: 'User not found' });
 
+  // Rotate: delete old token, issue a new one
+  db.prepare('DELETE FROM refresh_tokens WHERE id=?').run(record.id);
+  const newRt = generateRefreshToken();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?,?,?)').run(user.id, hashToken(newRt), expiresAt);
+
   const accessToken = signAccessToken(user);
-  res.json({ access_token: accessToken });
+  res.json({ access_token: accessToken, refresh_token: newRt });
 });
 
 router.post('/auth/logout', requireAuth, (req, res) => {

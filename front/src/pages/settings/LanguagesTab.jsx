@@ -21,6 +21,7 @@ export default function LanguagesTab({ project, canManage, onUpdate }) {
       });
       const updated = await apiJson(`/projects/${project.id}/languages`);
       setLangs(updated);
+      onUpdate?.({ ...project, languages: updated });
       setNewLang('');
     } catch (err) {
       setError(err.message);
@@ -34,12 +35,15 @@ export default function LanguagesTab({ project, canManage, onUpdate }) {
     });
     const updated = await apiJson(`/projects/${project.id}/languages`);
     setLangs(updated);
+    onUpdate?.({ ...project, languages: updated });
   }
 
   async function handleRemove(langCode) {
     if (!confirm(`Supprimer la langue ${langCode} ? Cela supprimera toutes les traductions dans cette langue.`)) return;
     await apiJson(`/projects/${project.id}/languages/${langCode}`, { method: 'DELETE' });
-    setLangs(langs.filter(l => l.lang_code !== langCode));
+    const updated = langs.filter(l => l.lang_code !== langCode);
+    setLangs(updated);
+    onUpdate?.({ ...project, languages: updated });
   }
 
   const unusedLangs = LANGUAGES.filter(l => !activeCodes.includes(l.code));

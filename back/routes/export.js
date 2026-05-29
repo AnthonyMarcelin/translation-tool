@@ -42,6 +42,9 @@ router.post('/projects/:id/import', upload.single('file'), (req, res) => {
 });
 
 router.get('/export/key/:id', (req, res) => {
+  const t = db.prepare('SELECT project_id FROM translations WHERE id=?').get(req.params.id);
+  if (!t) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessProject(req.user.id, t.project_id)) return res.status(403).json({ error: 'Access denied' });
   const rows = db.prepare('SELECT lang, text FROM translation_values WHERE translation_id=?').all(req.params.id);
   const result = {};
   rows.forEach(r => { result[r.lang] = r.text; });

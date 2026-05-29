@@ -68,16 +68,20 @@ const TranslationsCards = () => {
           method: 'PUT',
           body: JSON.stringify({ text }),
         });
+        dispatch({
+          type: actions.UPDATE_TRANSLATION_VALUE,
+          payload: { translationId: translation.id, lang: langCode, value: text },
+        });
       } else {
-        await apiJson('/translations/' + translation.id + '/values', {
+        const created = await apiJson('/translations/' + translation.id + '/values', {
           method: 'POST',
           body: JSON.stringify({ lang: langCode, text }),
         });
+        dispatch({
+          type: actions.UPDATE_TRANSLATION_VALUE,
+          payload: { translationId: translation.id, lang: langCode, value: text, valueId: created.id },
+        });
       }
-      dispatch({
-        type: actions.UPDATE_TRANSLATION_VALUE,
-        payload: { translationId: translation.id, lang: langCode, value: text },
-      });
     } catch (e) {
       alert('Erreur: ' + e.message);
     }

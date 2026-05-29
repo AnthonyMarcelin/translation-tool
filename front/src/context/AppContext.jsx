@@ -64,7 +64,13 @@ const appReducer = (state, action) => {
         ...state,
         translations: state.translations.map((t) =>
           t.id === action.payload.translationId
-            ? { ...t, values: { ...t.values, [action.payload.lang]: action.payload.value } }
+            ? {
+                ...t,
+                values: { ...t.values, [action.payload.lang]: action.payload.value },
+                value_ids: action.payload.valueId
+                  ? { ...t.value_ids, [action.payload.lang]: action.payload.valueId }
+                  : t.value_ids,
+              }
             : t
         ),
       };
