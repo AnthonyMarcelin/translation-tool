@@ -218,84 +218,89 @@ function migrateFromV1() {
     console.log('[DB] Could not read old data:', e.message);
   }
 
-  // Drop old tables (they'll be recreated by createSchema)
-  db.exec(`
-    DROP TABLE IF EXISTS translation_values;
-    DROP TABLE IF EXISTS translations;
-  `);
-
-  // Create new schema
-  createSchema();
-
-  // Create admin user
   const hash = bcrypt.hashSync('admin123', 10);
-  let adminId;
-  try {
-    const r = db.prepare('INSERT INTO users (email, password_hash, name) VALUES (?,?,?)').run('admin@local.dev', hash, 'Admin');
-    adminId = r.lastInsertRowid;
-  } catch {
-    adminId = db.prepare('SELECT id FROM users WHERE email=?').get('admin@local.dev').id;
-  }
-
-  // Create default org
-  let orgId;
-  try {
-    const r = db.prepare('INSERT INTO organizations (name, slug) VALUES (?,?)').run('Default', 'default');
-    orgId = r.lastInsertRowid;
-  } catch {
-    orgId = db.prepare('SELECT id FROM organizations WHERE slug=?').get('default').id;
-  }
-  db.prepare('INSERT OR IGNORE INTO org_members (org_id, user_id, role) VALUES (?,?,?)').run(orgId, adminId, 'owner');
-
-  // Map old project names to new project IDs
-  const projectMap = {};
-  const uniqueProjects = [...new Set(oldTranslations.map(t => t.project))];
   const defaultLangs = ['fr','en','es','de','it','nl','pt','ja'];
 
-  uniqueProjects.forEach(name => {
-    const slug = slugify(name);
-    let pid;
+  // Wrap everything in a transaction so a mid-migration crash rolls back
+  // cleanly (SQLite DDL is transactional — DROP TABLE is reversible here).
+  db.transaction(() => {
+    // Drop old tables (they'll be recreated by createSchema)
+    db.exec(`
+      DROP TABLE IF EXISTS translation_values;
+      DROP TABLE IF EXISTS translations;
+    `);
+
+    // Create new schema
+    createSchema();
+
+    // Create admin user
+    let adminId;
     try {
-      const r = db.prepare('INSERT INTO projects (org_id, name, slug) VALUES (?,?,?)').run(orgId, name, slug);
-      pid = r.lastInsertRowid;
+      const r = db.prepare('INSERT INTO users (email, password_hash, name) VALUES (?,?,?)').run('admin@local.dev', hash, 'Admin');
+      adminId = r.lastInsertRowid;
     } catch {
-      pid = db.prepare('SELECT id FROM projects WHERE org_id=? AND slug=?').get(orgId, slug).id;
+      adminId = db.prepare('SELECT id FROM users WHERE email=?').get('admin@local.dev').id;
     }
-    db.prepare('INSERT OR IGNORE INTO project_members (project_id, user_id, role) VALUES (?,?,?)').run(pid, adminId, 'owner');
-    defaultLangs.forEach((lang, i) => {
-      db.prepare('INSERT OR IGNORE INTO project_languages (project_id, lang_code, is_source) VALUES (?,?,?)').run(pid, lang, i === 0 ? 1 : 0);
-    });
-    projectMap[name] = pid;
-  });
 
-  // Migrate translations
-  const translationMap = {};
-  oldTranslations.forEach(t => {
-    const pid = projectMap[t.project];
-    if (!pid) return;
+    // Create default org
+    let orgId;
     try {
-      const r = db.prepare('INSERT OR IGNORE INTO translations (project_id, key, created_at, updated_at) VALUES (?,?,?,?)').run(pid, t.key, t.created_at, t.updated_at);
-      if (r.lastInsertRowid) {
-        translationMap[t.id] = r.lastInsertRowid;
-      } else {
-        const existing = db.prepare('SELECT id FROM translations WHERE project_id=? AND key=?').get(pid, t.key);
-        if (existing) translationMap[t.id] = existing.id;
+      const r = db.prepare('INSERT INTO organizations (name, slug) VALUES (?,?)').run('Default', 'default');
+      orgId = r.lastInsertRowid;
+    } catch {
+      orgId = db.prepare('SELECT id FROM organizations WHERE slug=?').get('default').id;
+    }
+    db.prepare('INSERT OR IGNORE INTO org_members (org_id, user_id, role) VALUES (?,?,?)').run(orgId, adminId, 'owner');
+
+    // Map old project names to new project IDs
+    const projectMap = {};
+    const uniqueProjects = [...new Set(oldTranslations.map(t => t.project))];
+
+    uniqueProjects.forEach(name => {
+      const slug = slugify(name);
+      let pid;
+      try {
+        const r = db.prepare('INSERT INTO projects (org_id, name, slug) VALUES (?,?,?)').run(orgId, name, slug);
+        pid = r.lastInsertRowid;
+      } catch {
+        pid = db.prepare('SELECT id FROM projects WHERE org_id=? AND slug=?').get(orgId, slug).id;
       }
-    } catch (e) {
-      console.error('[DB] Migration error for key', t.key, e.message);
-    }
-  });
+      db.prepare('INSERT OR IGNORE INTO project_members (project_id, user_id, role) VALUES (?,?,?)').run(pid, adminId, 'owner');
+      defaultLangs.forEach((lang, i) => {
+        db.prepare('INSERT OR IGNORE INTO project_languages (project_id, lang_code, is_source) VALUES (?,?,?)').run(pid, lang, i === 0 ? 1 : 0);
+      });
+      projectMap[name] = pid;
+    });
 
-  // Migrate values
-  oldValues.forEach(v => {
-    const newTid = translationMap[v.translation_id];
-    if (!newTid) return;
-    try {
-      db.prepare('INSERT OR IGNORE INTO translation_values (translation_id, lang, text) VALUES (?,?,?)').run(newTid, v.lang, v.text);
-    } catch (e) {
-      console.error('[DB] Migration error for value', v.id, e.message);
-    }
-  });
+    // Migrate translations
+    const translationMap = {};
+    oldTranslations.forEach(t => {
+      const pid = projectMap[t.project];
+      if (!pid) return;
+      try {
+        const r = db.prepare('INSERT OR IGNORE INTO translations (project_id, key, created_at, updated_at) VALUES (?,?,?,?)').run(pid, t.key, t.created_at, t.updated_at);
+        if (r.lastInsertRowid) {
+          translationMap[t.id] = r.lastInsertRowid;
+        } else {
+          const existing = db.prepare('SELECT id FROM translations WHERE project_id=? AND key=?').get(pid, t.key);
+          if (existing) translationMap[t.id] = existing.id;
+        }
+      } catch (e) {
+        console.error('[DB] Migration error for key', t.key, e.message);
+      }
+    });
+
+    // Migrate values
+    oldValues.forEach(v => {
+      const newTid = translationMap[v.translation_id];
+      if (!newTid) return;
+      try {
+        db.prepare('INSERT OR IGNORE INTO translation_values (translation_id, lang, text) VALUES (?,?,?)').run(newTid, v.lang, v.text);
+      } catch (e) {
+        console.error('[DB] Migration error for value', v.id, e.message);
+      }
+    });
+  })();
 
   console.log(`[DB] Migration complete. ${oldTranslations.length} keys, ${oldValues.length} values migrated.`);
   console.log('[DB] Default credentials: admin@local.dev / admin123');
