@@ -12,7 +12,10 @@ router.post('/translate', async (req, res) => {
 
   try {
     const response = await axios.post(`${LIBRE_URL}/translate`, { q: text, source, target, format: 'text' });
-    const translated = response.data.translatedText;
+    const translated = response.data?.translatedText;
+    if (typeof translated !== 'string') {
+      return res.status(502).json({ error: 'Translation service returned an unexpected response' });
+    }
 
     if (translation_id) {
       const t = db.prepare('SELECT * FROM translations WHERE id=?').get(translation_id);

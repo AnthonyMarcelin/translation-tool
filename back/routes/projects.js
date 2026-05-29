@@ -51,6 +51,7 @@ router.post('/projects/:id/members', (req, res) => {
   if (!canManageProject(req.user.id, project.id)) return res.status(403).json({ error: 'Insufficient permissions' });
   const { email, role = 'developer' } = req.body;
   if (!email) return res.status(400).json({ error: 'email required' });
+  if (!['owner','manager','developer','translator'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   const user = db.prepare('SELECT id, email, name FROM users WHERE email=?').get(email.toLowerCase());
   if (!user) return res.status(404).json({ error: 'User not found' });
   db.prepare('INSERT OR REPLACE INTO project_members (project_id, user_id, role) VALUES (?,?,?)').run(project.id, user.id, role);
@@ -72,6 +73,7 @@ router.post('/projects/:id/invites', (req, res) => {
 
   const { email, role = 'developer' } = req.body;
   if (!email) return res.status(400).json({ error: 'email required' });
+  if (!['owner','manager','developer','translator'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
 
   const token = crypto.randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

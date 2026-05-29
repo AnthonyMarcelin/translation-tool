@@ -79,10 +79,10 @@ router.post('/auth/refresh', (req, res) => {
   db.prepare('DELETE FROM refresh_tokens WHERE id=?').run(record.id);
   const newRt = generateRefreshToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?,?,?)').run(user.id, hashToken(newRt), expiresAt);
+  db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?,?,?)').run(user.id, newRt.hash, expiresAt);
 
   const accessToken = signAccessToken(user);
-  res.json({ access_token: accessToken, refresh_token: newRt });
+  res.json({ access_token: accessToken, refresh_token: newRt.raw });
 });
 
 router.post('/auth/logout', requireAuth, (req, res) => {

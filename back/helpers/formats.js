@@ -96,31 +96,42 @@ function handleImport(projectId, userId, req, res) {
 
   let created = 0, updated = 0, skipped = 0;
 
-  if (strategy === 'replace') {
-    db.prepare('DELETE FROM translation_values WHERE lang=? AND translation_id IN (SELECT id FROM translations WHERE project_id=?)').run(lang, projectId);
-  }
-
-  Object.entries(flat).forEach(([key, text]) => {
-    let t = db.prepare('SELECT id FROM translations WHERE project_id=? AND key=?').get(projectId, key);
-    if (!t) {
-      const r = db.prepare('INSERT INTO translations (project_id, key) VALUES (?,?)').run(projectId, key);
-      t = { id: r.lastInsertRowid };
-      created++;
+  // Wrap the whole mutation in a transaction so a mid-loop failure (or a
+  // 'replace' that deletes then fails) rolls back instead of leaving the
+  // project's translations half-wiped.
+  const runImport = db.transaction(() => {
+    if (strategy === 'replace') {
+      db.prepare('DELETE FROM translation_values WHERE lang=? AND translation_id IN (SELECT id FROM translations WHERE project_id=?)').run(lang, projectId);
     }
 
-    const existing = db.prepare('SELECT id FROM translation_values WHERE translation_id=? AND lang=?').get(t.id, lang);
-    if (existing) {
-      if (strategy === 'skip') { skipped++; return; }
-      db.prepare('UPDATE translation_values SET text=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(text, userId, existing.id);
-      updated++;
-    } else {
-      db.prepare('INSERT INTO translation_values (translation_id, lang, text, updated_by) VALUES (?,?,?,?)').run(t.id, lang, text, userId);
-      updated++;
-    }
+    Object.entries(flat).forEach(([key, text]) => {
+      let t = db.prepare('SELECT id FROM translations WHERE project_id=? AND key=?').get(projectId, key);
+      if (!t) {
+        const r = db.prepare('INSERT INTO translations (project_id, key) VALUES (?,?)').run(projectId, key);
+        t = { id: r.lastInsertRowid };
+        created++;
+      }
+
+      const existing = db.prepare('SELECT id FROM translation_values WHERE translation_id=? AND lang=?').get(t.id, lang);
+      if (existing) {
+        if (strategy === 'skip') { skipped++; return; }
+        db.prepare('UPDATE translation_values SET text=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(text, userId, existing.id);
+        updated++;
+      } else {
+        db.prepare('INSERT INTO translation_values (translation_id, lang, text, updated_by) VALUES (?,?,?,?)').run(t.id, lang, text, userId);
+        updated++;
+      }
+    });
+
+    // Ensure lang is in project_languages
+    db.prepare('INSERT OR IGNORE INTO project_languages (project_id, lang_code) VALUES (?,?)').run(projectId, lang);
   });
 
-  // Ensure lang is in project_languages
-  db.prepare('INSERT OR IGNORE INTO project_languages (project_id, lang_code) VALUES (?,?)').run(projectId, lang);
+  try {
+    runImport();
+  } catch (e) {
+    return res.status(500).json({ error: `Import failed, no changes applied: ${e.message}` });
+  }
 
   res.json({ created, updated, skipped, total: Object.keys(flat).length });
 }
