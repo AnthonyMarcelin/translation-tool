@@ -1,12 +1,14 @@
-import { createContext, useContext, useReducer, useMemo } from "react";
+import { createContext, useContext, useReducer } from "react";
 
 const AppContext = createContext();
 
-// Actions
 const ACTIONS = {
+  SET_ORGS: "SET_ORGS",
+  SET_CURRENT_ORG: "SET_CURRENT_ORG",
   SET_PROJECTS: "SET_PROJECTS",
   SET_CURRENT_PROJECT: "SET_CURRENT_PROJECT",
   SET_TRANSLATIONS: "SET_TRANSLATIONS",
+  SET_PROJECT_LANGUAGES: "SET_PROJECT_LANGUAGES",
   SET_SELECTED_LANGUAGES: "SET_SELECTED_LANGUAGES",
   SET_SEARCH_TERM: "SET_SEARCH_TERM",
   SET_LOADING: "SET_LOADING",
@@ -19,22 +21,35 @@ const ACTIONS = {
   SET_VIEW_MODE: "SET_VIEW_MODE",
 };
 
-// Reducer
 const appReducer = (state, action) => {
   switch (action.type) {
+    case ACTIONS.SET_ORGS:
+      return { ...state, orgs: action.payload };
+
+    case ACTIONS.SET_CURRENT_ORG:
+      localStorage.setItem("currentOrgSlug", action.payload?.slug || "");
+      return { ...state, currentOrg: action.payload };
+
     case ACTIONS.SET_PROJECTS:
       return { ...state, projects: action.payload };
 
     case ACTIONS.SET_CURRENT_PROJECT:
-      // Persister le projet sélectionné
-      localStorage.setItem("currentProject", action.payload);
-      return { ...state, currentProject: action.payload };
+      localStorage.setItem("currentProjectId", action.payload?.id || "");
+      return { ...state, currentProject: action.payload, translations: [] };
 
     case ACTIONS.SET_TRANSLATIONS:
       return { ...state, translations: action.payload };
 
+    case ACTIONS.SET_PROJECT_LANGUAGES:
+      const defaultLangs = action.payload.map(l => l.lang_code);
+      const selected = state.selectedLanguages.filter(l => defaultLangs.includes(l));
+      return {
+        ...state,
+        projectLanguages: action.payload,
+        selectedLanguages: selected.length > 0 ? selected : defaultLangs.slice(0, 4),
+      };
+
     case ACTIONS.SET_SELECTED_LANGUAGES:
-      // Persister les langues sélectionnées
       localStorage.setItem("selectedLanguages", JSON.stringify(action.payload));
       return { ...state, selectedLanguages: action.payload };
 
@@ -47,30 +62,24 @@ const appReducer = (state, action) => {
     case ACTIONS.UPDATE_TRANSLATION_VALUE:
       return {
         ...state,
-        translations: state.translations.map((trans) =>
-          trans.id === action.payload.translationId
+        translations: state.translations.map((t) =>
+          t.id === action.payload.translationId
             ? {
-                ...trans,
-                values: {
-                  ...trans.values,
-                  [action.payload.lang]: action.payload.value,
-                },
+                ...t,
+                values: { ...t.values, [action.payload.lang]: action.payload.value },
+                value_ids: action.payload.valueId
+                  ? { ...t.value_ids, [action.payload.lang]: action.payload.valueId }
+                  : t.value_ids,
               }
-            : trans,
+            : t
         ),
       };
 
     case ACTIONS.ADD_TRANSLATION:
-      return {
-        ...state,
-        translations: [...state.translations, action.payload],
-      };
+      return { ...state, translations: [action.payload, ...state.translations] };
 
     case ACTIONS.REMOVE_TRANSLATION:
-      return {
-        ...state,
-        translations: state.translations.filter((t) => t.id !== action.payload),
-      };
+      return { ...state, translations: state.translations.filter((t) => t.id !== action.payload) };
 
     case ACTIONS.SET_FILTER:
       return { ...state, filter: action.payload };
@@ -90,40 +99,32 @@ const appReducer = (state, action) => {
   }
 };
 
-// État initial
+const savedProjectId = localStorage.getItem("currentProjectId");
+
 const initialState = {
+  orgs: [],
+  currentOrg: null,
   projects: [],
-  currentProject: localStorage.getItem("currentProject") || "",
+  currentProject: null,
   translations: [],
-  selectedLanguages: JSON.parse(
-    localStorage.getItem("selectedLanguages") || '["fr", "en"]',
-  ),
+  projectLanguages: [],
+  selectedLanguages: JSON.parse(localStorage.getItem("selectedLanguages") || '["fr","en"]'),
   searchTerm: "",
   loading: false,
-  filter: "all", // all, missing, completed
-  sort: "key", // key, updated, created
+  filter: "all",
+  sort: "key",
   sidebarOpen: window.innerWidth > 768,
-  viewMode: localStorage.getItem("viewMode") || "table", // table, cards
+  viewMode: localStorage.getItem("viewMode") || "table",
 };
 
-// Provider component
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-
-  const value = {
-    ...state,
-    dispatch,
-    actions: ACTIONS,
-  };
-
+  const value = { ...state, dispatch, actions: ACTIONS };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-// Custom hook
 export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useApp must be used within an AppProvider");
-  }
-  return context;
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
 };

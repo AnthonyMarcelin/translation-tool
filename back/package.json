@@ -1,10 +1,15 @@
 {
   "name": "back",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Translation Tool Backend v2",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test test/*.test.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
+    "seed-user": "node scripts/seed-user.js"
   },
   "keywords": [],
   "author": "",
@@ -12,9 +17,14 @@
   "type": "commonjs",
   "dependencies": {
     "archiver": "^7.0.1",
-    "axios": "^1.12.2",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "better-sqlite3": "^11.5.0"
+    "axios": "^1.16.1",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.10"
   }
 }
