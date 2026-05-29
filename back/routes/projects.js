@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const db = require('../db-better');
 const { getProjectRole, canAccessProject, canManageProject } = require('../helpers/roles');
 const { generateApiKey } = require('../helpers/crypto');
+const { sendInviteEmail } = require('../helpers/mailer');
 
 const router = express.Router();
 
@@ -66,8 +67,8 @@ router.delete('/projects/:id/members/:userId', (req, res) => {
   res.json({ deleted: true });
 });
 
-router.post('/projects/:id/invites', (req, res) => {
-  const project = db.prepare('SELECT * FROM projects WHERE id=?').get(req.params.id);
+router.post('/projects/:id/invites', async (req, res) => {
+  const project = db.prepare('SELECT p.*, o.name as org_name FROM projects p JOIN organizations o ON o.id=p.org_id WHERE p.id=?').get(req.params.id);
   if (!project) return res.status(404).json({ error: 'Not found' });
   if (!canManageProject(req.user.id, project.id)) return res.status(403).json({ error: 'Insufficient permissions' });
 
@@ -80,9 +81,12 @@ router.post('/projects/:id/invites', (req, res) => {
 
   db.prepare('INSERT INTO project_invites (project_id, email, role, token, expires_at) VALUES (?,?,?,?,?)').run(project.id, email.toLowerCase(), role, token, expires);
 
-  // In production: send email. For now return token.
-  console.log(`[Invite] Token for ${email}: ${token}`);
-  res.status(201).json({ token, invite_url: `/invite/${token}`, expires_at: expires });
+  // Send the invite email (or log the link when SMTP isn't configured).
+  const { sent, url } = await sendInviteEmail({
+    email, token, role, projectName: project.name, orgName: project.org_name,
+  });
+
+  res.status(201).json({ token, invite_url: `/invite/${token}`, email_sent: sent, link: url, expires_at: expires });
 });
 
 router.get('/projects/:id/invites', (req, res) => {

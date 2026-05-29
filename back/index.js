@@ -25,6 +25,12 @@ app.use('/', require('./routes/translations'));
 app.use('/', require('./routes/export'));
 app.use('/', require('./routes/translate'));
 
-app.listen(PORT, () => {
-  console.log(`[Server] Translation Tool v2 running on port ${PORT}`);
-});
+// Only start listening when run directly (`node index.js`), not when imported
+// by the test suite, which drives the app on an ephemeral port.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[Server] Translation Tool v2 running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

@@ -206,9 +206,24 @@ POST   /v1/import                     multipart/form-data: file + strategy (merg
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3001` | HTTP port |
-| `JWT_SECRET` | *(random at start)* | Signing secret for access tokens — **set this in production** |
+| `JWT_SECRET` | dev fallback | Signing secret for access tokens. **Required in production** — the server refuses to boot with `NODE_ENV=production` unless it's set. Generate one with `openssl rand -hex 32`. |
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | CORS allowed origins, comma-separated |
-| `LIBRETRANSLATE_URL` | `http://libretranslate:5000` | Auto-translate endpoint |
+| `LIBRE_URL` | `http://libretranslate:5000` | Auto-translate endpoint |
+| `APP_URL` | `http://localhost:3000` | Public frontend URL, used to build invite links in emails |
+| `DB_PATH` | `back/data/translations.db` | SQLite file location (mainly for tests) |
+
+#### SMTP (optional — invite emails)
+
+When these are set, project invitations are emailed. When unset, the invite link is logged to the console and still returned by the API, so the flow works without a mail server.
+
+| Variable | Default | Description |
+|---|---|---|
+| `SMTP_HOST` | — | SMTP server host (enables email when set with user/pass) |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_SECURE` | `false` | Use TLS on connect (`true` for port 465) |
+| `SMTP_USER` | — | SMTP username |
+| `SMTP_PASS` | — | SMTP password |
+| `SMTP_FROM` | `Translation Tool <no-reply@translation.local>` | From header |
 
 ### Frontend (`front/`)
 
@@ -233,9 +248,10 @@ services:
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, Vite 7, react-router-dom 7 |
+| Frontend | React 19, Vite 8, react-router-dom 7 |
 | Backend | Node.js, Express 5, better-sqlite3 |
 | Auth | jsonwebtoken, bcrypt |
+| Email | nodemailer (optional SMTP) |
 | Database | SQLite (persisted via Docker volume) |
 | Auto-translation | LibreTranslate (local Docker container) |
 | Static server | nginx (serves the React SPA) |
@@ -253,6 +269,14 @@ cd front && npm install && npm run dev
 ```
 
 Set `VITE_API_URL=http://localhost:3001` in `front/.env.local` if needed.
+
+### Tests
+
+The backend has an integration suite (Node's built-in test runner, no extra deps) covering auth, token rotation, the API-key export flow, and validation guards. It runs against a throwaway SQLite database, so it never touches your real data:
+
+```sh
+cd back && npm test
+```
 
 ---
 

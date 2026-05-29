@@ -3,10 +3,12 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 
-const dataDir = path.join(__dirname, 'data');
+// DB_PATH lets tests point at a throwaway database instead of the real one.
+const dbFile = process.env.DB_PATH || path.join(__dirname, 'data', 'translations.db');
+const dataDir = path.dirname(dbFile);
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const db = new Database(path.join(dataDir, 'translations.db'));
+const db = new Database(dbFile);
 db.pragma('foreign_keys = ON');
 db.pragma('journal_mode = WAL');
 

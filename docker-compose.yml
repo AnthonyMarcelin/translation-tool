@@ -16,6 +16,21 @@ services:
       - translation_db:/app/data
     environment:
       - NODE_ENV=production
+      # Required in production. Set JWT_SECRET in a .env file next to this
+      # compose file (e.g. `JWT_SECRET=$(openssl rand -hex 32)`); the server
+      # refuses to start without it.
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required — set it in a .env file}
+      # Public frontend URL, used to build invite links.
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      # CORS origins (comma-separated).
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      # Optional SMTP for invite emails — left unset, invite links are logged.
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-Translation Tool <no-reply@translation.local>}
 
   libretranslate:
     image: libretranslate/libretranslate:latest
