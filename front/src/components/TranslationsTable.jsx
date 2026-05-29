@@ -169,6 +169,7 @@ const TranslationsTable = () => {
               <th className="checkbox-column">
                 <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={toggleAll} />
               </th>
+              <th className="actions-column"></th>
               <th className="key-column">Clé</th>
               {selectedLanguages.map(code => {
                 const lang = getLangInfo(code);
@@ -182,7 +183,6 @@ const TranslationsTable = () => {
                   </th>
                 );
               })}
-              <th className="actions-column">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -190,6 +190,9 @@ const TranslationsTable = () => {
               <tr key={translation.id} className={`translation-row ${selected.has(translation.id) ? "selected" : ""}`}>
                 <td className="checkbox-cell">
                   <input type="checkbox" checked={selected.has(translation.id)} onChange={() => toggleSelect(translation.id)} />
+                </td>
+                <td className="actions-cell">
+                  <button className="delete-btn" onClick={() => handleDelete(translation.id)} title="Supprimer">🗑️</button>
                 </td>
                 <td className="key-cell">
                   <div className="key-content">
@@ -259,9 +262,6 @@ const TranslationsTable = () => {
                   );
                 })}
 
-                <td className="actions-cell">
-                  <button className="delete-btn" onClick={() => handleDelete(translation.id)} title="Supprimer">🗑️</button>
-                </td>
               </tr>
             ))}
           </tbody>
