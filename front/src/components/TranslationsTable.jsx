@@ -9,7 +9,7 @@ const STATUS_COLORS = { draft: "#64748b", reviewed: "#f59e0b", approved: "#10b98
 const STATUS_LABELS = { draft: "Brouillon", reviewed: "Relu", approved: "Approuvé" };
 
 const TranslationsTable = () => {
-  const { currentProject, selectedLanguages, dispatch, actions } = useApp();
+  const { currentProject, selectedLanguages, projectLanguages, dispatch, actions } = useApp();
   const { filteredTranslations } = useFilters();
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -29,25 +29,55 @@ const TranslationsTable = () => {
   const saveEdit = async (translationId, lang) => {
     const t = filteredTranslations.find(t => t.id === translationId);
     const valueId = t?.value_ids?.[lang];
+    const text = editValue;
+
+    setEditingCell(null);
+    setEditValue("");
 
     try {
       if (valueId) {
         await apiJson(`/values/${valueId}`, {
           method: "PUT",
-          body: JSON.stringify({ text: editValue }),
+          body: JSON.stringify({ text }),
         });
+        dispatch({ type: actions.UPDATE_TRANSLATION_VALUE, payload: { translationId, lang, value: text } });
       } else {
-        await apiJson(`/translations/${translationId}/values`, {
+        const created = await apiJson(`/translations/${translationId}/values`, {
           method: "POST",
-          body: JSON.stringify({ lang, text: editValue }),
+          body: JSON.stringify({ lang, text }),
         });
+        dispatch({ type: actions.UPDATE_TRANSLATION_VALUE, payload: { translationId, lang, value: text, valueId: created?.id } });
       }
-      dispatch({ type: actions.UPDATE_TRANSLATION_VALUE, payload: { translationId, lang, value: editValue } });
     } catch (err) {
       console.error("Save error:", err);
+      return;
     }
-    setEditingCell(null);
-    setEditValue("");
+
+    // If we just edited the source language, silently auto-translate to all other
+    // languages that are currently empty or still in draft status.
+    const sourceLangCode = projectLanguages.find(l => l.is_source)?.lang_code;
+    if (!sourceLangCode || lang !== sourceLangCode || !text.trim()) return;
+
+    const targets = selectedLanguages.filter(l => {
+      if (l === sourceLangCode) return false;
+      const val = t?.values?.[l] || "";
+      const status = t?.statuses?.[l] || "draft";
+      return !val.trim() || status === "draft";
+    });
+
+    for (const target of targets) {
+      try {
+        const result = await apiJson("/translate", {
+          method: "POST",
+          body: JSON.stringify({ text, source: sourceLangCode, target, translation_id: translationId }),
+        });
+        if (result.translatedText) {
+          dispatch({ type: actions.UPDATE_TRANSLATION_VALUE, payload: { translationId, lang: target, value: result.translatedText } });
+        }
+      } catch {
+        // silent — translation service may be unavailable
+      }
+    }
   };
 
   const cancelEdit = () => { setEditingCell(null); setEditValue(""); };

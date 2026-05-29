@@ -5,7 +5,7 @@ import { LANGUAGES } from "../constants";
 import "./TranslationsCards.css";
 
 const TranslationsCards = () => {
-  const { selectedLanguages, currentProject, dispatch, actions } = useApp();
+  const { selectedLanguages, projectLanguages, currentProject, dispatch, actions } = useApp();
   const { filteredTranslations } = useFilters();
 
   const getLanguageInfo = (langCode) => {
@@ -84,6 +84,35 @@ const TranslationsCards = () => {
       }
     } catch (e) {
       alert('Erreur: ' + e.message);
+      return;
+    }
+
+    // Silent auto-translation when source language is edited
+    const sourceLangCode = projectLanguages.find(l => l.is_source)?.lang_code;
+    if (!sourceLangCode || langCode !== sourceLangCode || !text.trim()) return;
+
+    const targets = selectedLanguages.filter(l => {
+      if (l === sourceLangCode) return false;
+      const val = translation.values?.[l] || "";
+      const status = translation.statuses?.[l] || "draft";
+      return !val.trim() || status === "draft";
+    });
+
+    for (const target of targets) {
+      try {
+        const result = await apiJson('/translate', {
+          method: 'POST',
+          body: JSON.stringify({ text, source: sourceLangCode, target, translation_id: translation.id }),
+        });
+        if (result.translatedText) {
+          dispatch({
+            type: actions.UPDATE_TRANSLATION_VALUE,
+            payload: { translationId: translation.id, lang: target, value: result.translatedText },
+          });
+        }
+      } catch {
+        // silent — translation service may be unavailable
+      }
     }
   };
 
